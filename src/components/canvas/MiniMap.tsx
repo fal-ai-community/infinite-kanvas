@@ -12,12 +12,14 @@ interface MiniMapProps {
     width: number;
     height: number;
   };
+  setViewport: (viewport: { x: number; y: number; scale: number }) => void;
 }
 
 export const MiniMap: React.FC<MiniMapProps> = ({
   images,
   viewport,
   canvasSize,
+  setViewport,
 }) => {
   // Calculate bounds of all content
   let minX = Infinity,
@@ -46,9 +48,30 @@ export const MiniMap: React.FC<MiniMapProps> = ({
   const offsetX = (miniMapWidth - contentWidth * scale) / 2;
   const offsetY = (miniMapHeight - contentHeight * scale) / 2;
 
+  const handleMiniMapClick = (e: React.MouseEvent) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const clickY = e.clientY - rect.top;
+
+    const canvasX = (clickX - offsetX) / scale + minX;
+    const canvasY = (clickY - offsetY) / scale + minY;
+
+    const newViewportX = -(canvasX - canvasSize.width / 2 / viewport.scale) * viewport.scale;
+    const newViewportY = -(canvasY - canvasSize.height / 2 / viewport.scale) * viewport.scale;
+
+    setViewport({
+      x: newViewportX,
+      y: newViewportY,
+      scale: viewport.scale,
+    });
+  };
+
   return (
     <div className="absolute top-4 right-2 md:right-4 z-20 bg-background/95 border rounded shadow-sm p-1 md:p-2">
-      <div className="relative w-32 h-24 md:w-48 md:h-32 bg-muted rounded overflow-hidden">
+      <div 
+        className="relative w-32 h-24 md:w-48 md:h-32 bg-muted rounded overflow-hidden cursor-pointer hover:bg-muted/80 transition-colors"
+        onClick={handleMiniMapClick}
+      >
         {/* Render tiny versions of images */}
         {images.map((img) => (
           <div
