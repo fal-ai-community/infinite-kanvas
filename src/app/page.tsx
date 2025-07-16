@@ -1032,6 +1032,90 @@ export default function OverlayPage() {
     });
   };
 
+  const sendToFront = useCallback(() => {
+    if (selectedIds.length === 0) return;
+
+    saveToHistory();
+    setImages((prev) => {
+      // Get selected images in their current order
+      const selectedImages = selectedIds
+        .map((id) => prev.find((img) => img.id === id))
+        .filter(Boolean) as PlacedImage[];
+
+      // Get remaining images
+      const remainingImages = prev.filter(
+        (img) => !selectedIds.includes(img.id)
+      );
+
+      // Place selected images at the end (top layer)
+      return [...remainingImages, ...selectedImages];
+    });
+  }, [selectedIds, saveToHistory]);
+
+  const sendToBack = useCallback(() => {
+    if (selectedIds.length === 0) return;
+
+    saveToHistory();
+    setImages((prev) => {
+      // Get selected images in their current order
+      const selectedImages = selectedIds
+        .map((id) => prev.find((img) => img.id === id))
+        .filter(Boolean) as PlacedImage[];
+
+      // Get remaining images
+      const remainingImages = prev.filter(
+        (img) => !selectedIds.includes(img.id)
+      );
+
+      // Place selected images at the beginning (bottom layer)
+      return [...selectedImages, ...remainingImages];
+    });
+  }, [selectedIds, saveToHistory]);
+
+  const bringForward = useCallback(() => {
+    if (selectedIds.length === 0) return;
+
+    saveToHistory();
+    setImages((prev) => {
+      const result = [...prev];
+
+      // Process selected images from back to front to maintain relative order
+      for (let i = result.length - 2; i >= 0; i--) {
+        if (
+          selectedIds.includes(result[i].id) &&
+          !selectedIds.includes(result[i + 1].id)
+        ) {
+          // Swap with the next image if it's not also selected
+          [result[i], result[i + 1]] = [result[i + 1], result[i]];
+        }
+      }
+
+      return result;
+    });
+  }, [selectedIds, saveToHistory]);
+
+  const sendBackward = useCallback(() => {
+    if (selectedIds.length === 0) return;
+
+    saveToHistory();
+    setImages((prev) => {
+      const result = [...prev];
+
+      // Process selected images from front to back to maintain relative order
+      for (let i = 1; i < result.length; i++) {
+        if (
+          selectedIds.includes(result[i].id) &&
+          !selectedIds.includes(result[i - 1].id)
+        ) {
+          // Swap with the previous image if it's not also selected
+          [result[i], result[i - 1]] = [result[i - 1], result[i]];
+        }
+      }
+
+      return result;
+    });
+  }, [selectedIds, saveToHistory]);
+
   const handleIsolate = async () => {
     if (!isolateTarget || !isolateInputValue.trim() || isIsolating) {
       return;
@@ -1480,6 +1564,26 @@ export default function OverlayPage() {
           handleRun();
         }
       }
+      // Layer ordering shortcuts
+      else if (e.key === "]" && !isInputElement) {
+        e.preventDefault();
+        if (selectedIds.length > 0) {
+          if (e.metaKey || e.ctrlKey) {
+            sendToFront();
+          } else {
+            bringForward();
+          }
+        }
+      } else if (e.key === "[" && !isInputElement) {
+        e.preventDefault();
+        if (selectedIds.length > 0) {
+          if (e.metaKey || e.ctrlKey) {
+            sendToBack();
+          } else {
+            sendBackward();
+          }
+        }
+      }
       // Escape to exit crop mode
       else if (e.key === "Escape" && croppingImageId) {
         e.preventDefault();
@@ -1550,6 +1654,10 @@ export default function OverlayPage() {
     croppingImageId,
     viewport,
     canvasSize,
+    sendToFront,
+    sendToBack,
+    bringForward,
+    sendBackward,
   ]);
 
   return (
@@ -1879,6 +1987,10 @@ export default function OverlayPage() {
               setCroppingImageId={setCroppingImageId}
               setIsolateInputValue={setIsolateInputValue}
               setIsolateTarget={setIsolateTarget}
+              sendToFront={sendToFront}
+              sendToBack={sendToBack}
+              bringForward={bringForward}
+              sendBackward={sendBackward}
             />
           </ContextMenu>
 
@@ -1906,6 +2018,10 @@ export default function OverlayPage() {
               handleCombineImages={handleCombineImages}
               handleDelete={handleDelete}
               setCroppingImageId={setCroppingImageId}
+              sendToFront={sendToFront}
+              sendToBack={sendToBack}
+              bringForward={bringForward}
+              sendBackward={sendBackward}
             />
           </div>
 

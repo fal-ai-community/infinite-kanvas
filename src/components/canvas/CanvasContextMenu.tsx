@@ -19,6 +19,11 @@ import {
   Combine,
   Download,
   X,
+  Layers,
+  ChevronUp,
+  ChevronDown,
+  MoveUp,
+  MoveDown,
 } from "lucide-react";
 import { SpinnerIcon } from "@/components/icons";
 import { checkOS } from "@/utils/os-utils";
@@ -40,6 +45,10 @@ interface CanvasContextMenuProps {
   setCroppingImageId: (id: string | null) => void;
   setIsolateInputValue: (value: string) => void;
   setIsolateTarget: (id: string | null) => void;
+  sendToFront: () => void;
+  sendToBack: () => void;
+  bringForward: () => void;
+  sendBackward: () => void;
 }
 
 export const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
@@ -58,6 +67,10 @@ export const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
   setCroppingImageId,
   setIsolateInputValue,
   setIsolateTarget,
+  sendToFront,
+  sendToBack,
+  bringForward,
+  sendBackward,
 }) => {
   return (
     <ContextMenuContent>
@@ -78,9 +91,7 @@ export const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
           variant="alpha"
           size="xs"
           shortcut={
-            checkOS("Win") || checkOS("Linux")
-              ? "ctrl+enter"
-              : "meta+enter"
+            checkOS("Win") || checkOS("Linux") ? "ctrl+enter" : "meta+enter"
           }
         />
       </ContextMenuItem>
@@ -202,6 +213,73 @@ export const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
         <Combine className="h-4 w-4" />
         Combine Images
       </ContextMenuItem>
+      <ContextMenuSub>
+        <ContextMenuSubTrigger
+          disabled={selectedIds.length === 0}
+          className="flex items-center gap-2"
+        >
+          <Layers className="h-4 w-4" />
+          Layer Order
+        </ContextMenuSubTrigger>
+        <ContextMenuSubContent className="w-64" sideOffset={5}>
+          <ContextMenuItem
+            onClick={sendToFront}
+            disabled={selectedIds.length === 0}
+            className="flex items-center justify-between gap-2"
+          >
+            <div className="flex items-center gap-2">
+              <MoveUp className="h-4 w-4" />
+              <span>Send to Front</span>
+            </div>
+            <ShortcutBadge
+              variant="alpha"
+              size="xs"
+              shortcut={
+                checkOS("Win") || checkOS("Linux") ? "ctrl+]" : "meta+]"
+              }
+            />
+          </ContextMenuItem>
+          <ContextMenuItem
+            onClick={bringForward}
+            disabled={selectedIds.length === 0}
+            className="flex items-center justify-between gap-2"
+          >
+            <div className="flex items-center gap-2">
+              <ChevronUp className="h-4 w-4" />
+              <span>Bring Forward</span>
+            </div>
+            <ShortcutBadge variant="alpha" size="xs" shortcut="]" />
+          </ContextMenuItem>
+          <ContextMenuItem
+            onClick={sendBackward}
+            disabled={selectedIds.length === 0}
+            className="flex items-center justify-between gap-2"
+          >
+            <div className="flex items-center gap-2">
+              <ChevronDown className="h-4 w-4" />
+              <span>Send Backward</span>
+            </div>
+            <ShortcutBadge variant="alpha" size="xs" shortcut="[" />
+          </ContextMenuItem>
+          <ContextMenuItem
+            onClick={sendToBack}
+            disabled={selectedIds.length === 0}
+            className="flex items-center justify-between gap-2"
+          >
+            <div className="flex items-center gap-2">
+              <MoveDown className="h-4 w-4" />
+              <span>Send to Back</span>
+            </div>
+            <ShortcutBadge
+              variant="alpha"
+              size="xs"
+              shortcut={
+                checkOS("Win") || checkOS("Linux") ? "ctrl+[" : "meta+["
+              }
+            />
+          </ContextMenuItem>
+        </ContextMenuSubContent>
+      </ContextMenuSub>
       <ContextMenuItem
         onClick={() => {
           selectedIds.forEach((id) => {
