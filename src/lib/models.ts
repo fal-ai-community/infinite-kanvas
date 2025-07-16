@@ -31,15 +31,6 @@ export const styleModels: StyleModel[] = [
       "https://huggingface.co/fal/3D-Game-Assets-Kontext-Dev-LoRA/resolve/main/MnzfOWwLjl1CL_0qu7F6E_adapter_model_comfy_converted.safetensors",
   },
   {
-    overlay: true,
-    id: "overlay",
-    name: "Overlay",
-    imageSrc: "/images/styles/overlay.png",
-    prompt: "Place it",
-    loraUrl:
-      "https://v3.fal.media/files/panda/WVVtJFD90b8SsU6EzeGkO_adapter_model_comfy_converted.safetensors",
-  },
-  {
     id: "pixel",
     name: "Pixel Style",
     imageSrc: "/images/styles/pixel.png",
@@ -194,7 +185,6 @@ export const styleModels: StyleModel[] = [
     loraUrl:
       "https://huggingface.co/fal/Cubist-Art-Kontext-Dev-LoRA/resolve/main/59yr4hcEqhdxkEgIu7iwY_adapter_model_comfy_converted.safetensors",
   },
-
   {
     id: "charcoal",
     name: "Charcoal Art Style",
@@ -202,5 +192,32 @@ export const styleModels: StyleModel[] = [
     prompt: "Convert this image into charcoal art style",
     loraUrl:
       "https://huggingface.co/fal/Charcoal-Art-Kontext-Dev-LoRA/resolve/main/It2d_UD0qRgotAZjJHXx__adapter_model_comfy_converted.safetensors",
+  },
+  {
+    overlay: true,
+    id: "overlay",
+    name: "Overlay",
+    imageSrc: "/images/styles/overlay.png",
+    prompt: "Place it",
+    loraUrl:
+      "https://huggingface.co/ilkerzgi/Overlay-Kontext-Dev-LoRA/blob/main/WVVtJFD90b8SsU6EzeGkO_adapter_model_comfy_converted.safetensors",
+  },
+  {
+    overlay: true,
+    id: "lightfix",
+    name: "Light Fix",
+    imageSrc: "/images/styles/lightfix.png",
+    prompt: "Fuse this image into background",
+    loraUrl:
+      "https://huggingface.co/gokaygokay/Light-Fix-Kontext-Dev-LoRA/blob/main/oRdQNr1St3rF_DNI7miGM_adapter_model_comfy_converted.safetensors",
+  },
+  {
+    overlay: true,
+    id: "fuseit",
+    name: "Fuse It",
+    imageSrc: "/images/styles/fuseit.png",
+    prompt: "Fuse this image into background",
+    loraUrl:
+      "https://huggingface.co/gokaygokay/Fuse-it-Kontext-Dev-LoRA/blob/main/O93-UdItaNx8JzLYgnf2h_adapter_model_comfy_converted.safetensors",
   },
 ];
