@@ -306,8 +306,8 @@ export const handleRun = async (deps: GenerationHandlerDeps) => {
         generationSettings,
         setImages,
         setActiveGenerations,
-        outputWidth,
-        outputHeight
+        img.width,
+        img.height
       );
       successCount++;
     } catch (error) {
