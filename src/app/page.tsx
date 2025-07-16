@@ -143,7 +143,7 @@ export default function OverlayPage() {
 
   // Touch event states for mobile
   const [lastTouchDistance, setLastTouchDistance] = useState<number | null>(
-    null
+    null,
   );
   const [lastTouchCenter, setLastTouchCenter] = useState<{
     x: number;
@@ -159,15 +159,15 @@ export default function OverlayPage() {
   // Direct FAL upload function using proxy
 
   const { mutateAsync: removeBackground } = useMutation(
-    trpc.removeBackground.mutationOptions()
+    trpc.removeBackground.mutationOptions(),
   );
 
   const { mutateAsync: isolateObject } = useMutation(
-    trpc.isolateObject.mutationOptions()
+    trpc.isolateObject.mutationOptions(),
   );
 
   const { mutateAsync: generateTextToImage } = useMutation(
-    trpc.generateTextToImage.mutationOptions()
+    trpc.generateTextToImage.mutationOptions(),
   );
 
   // Save current state to storage
@@ -460,7 +460,7 @@ export default function OverlayPage() {
   const resizeImageIfNeeded = async (
     dataUrl: string,
     maxWidth: number = 2048,
-    maxHeight: number = 2048
+    maxHeight: number = 2048,
   ): Promise<string> => {
     return new Promise((resolve, reject) => {
       const img = new window.Image();
@@ -511,7 +511,7 @@ export default function OverlayPage() {
             reader.readAsDataURL(blob);
           },
           "image/jpeg",
-          0.9 // 90% quality
+          0.9, // 90% quality
         );
       };
       img.onerror = () => reject(new Error("Failed to load image"));
@@ -525,7 +525,7 @@ export default function OverlayPage() {
     cropX: number,
     cropY: number,
     cropWidth: number,
-    cropHeight: number
+    cropHeight: number,
   ): Promise<string> => {
     return new Promise((resolve, reject) => {
       const img = new window.Image();
@@ -552,7 +552,7 @@ export default function OverlayPage() {
           0,
           0,
           canvas.width,
-          canvas.height
+          canvas.height,
         );
 
         // Convert to data URL
@@ -575,7 +575,7 @@ export default function OverlayPage() {
   // Handle file upload
   const handleFileUpload = (
     files: FileList | null,
-    position?: { x: number; y: number }
+    position?: { x: number; y: number },
   ) => {
     if (!files) return;
 
@@ -720,7 +720,7 @@ export default function OverlayPage() {
       const touch2 = { x: touches[1].clientX, y: touches[1].clientY };
 
       const distance = Math.sqrt(
-        Math.pow(touch2.x - touch1.x, 2) + Math.pow(touch2.y - touch1.y, 2)
+        Math.pow(touch2.x - touch1.x, 2) + Math.pow(touch2.y - touch1.y, 2),
       );
 
       const center = {
@@ -772,7 +772,7 @@ export default function OverlayPage() {
       const touch2 = { x: touches[1].clientX, y: touches[1].clientY };
 
       const distance = Math.sqrt(
-        Math.pow(touch2.x - touch1.x, 2) + Math.pow(touch2.y - touch1.y, 2)
+        Math.pow(touch2.x - touch1.x, 2) + Math.pow(touch2.y - touch1.y, 2),
       );
 
       const center = {
@@ -846,7 +846,7 @@ export default function OverlayPage() {
   const handleSelect = (id: string, e: any) => {
     if (e.evt.shiftKey || e.evt.metaKey || e.evt.ctrlKey) {
       setSelectedIds((prev) =>
-        prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
+        prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id],
       );
     } else {
       setSelectedIds([id]);
@@ -1048,7 +1048,7 @@ export default function OverlayPage() {
 
       // Get remaining images
       const remainingImages = prev.filter(
-        (img) => !selectedIds.includes(img.id)
+        (img) => !selectedIds.includes(img.id),
       );
 
       // Place selected images at the end (top layer)
@@ -1068,7 +1068,7 @@ export default function OverlayPage() {
 
       // Get remaining images
       const remainingImages = prev.filter(
-        (img) => !selectedIds.includes(img.id)
+        (img) => !selectedIds.includes(img.id),
       );
 
       // Place selected images at the beginning (bottom layer)
@@ -1173,7 +1173,7 @@ export default function OverlayPage() {
         0,
         0,
         canvas.width,
-        canvas.height
+        canvas.height,
       );
 
       // Convert to blob and upload
@@ -1192,7 +1192,7 @@ export default function OverlayPage() {
         dataUrl,
         falClient,
         toast,
-        setIsApiKeyDialogOpen
+        setIsApiKeyDialogOpen,
       );
 
       // Isolate object using EVF-SAM2
@@ -1237,7 +1237,7 @@ export default function OverlayPage() {
             "New image loaded successfully:",
             testImg.width,
             "x",
-            testImg.height
+            testImg.height,
           );
 
           // Create a test canvas to verify the image has transparency
@@ -1291,7 +1291,7 @@ export default function OverlayPage() {
             // Replace old image with new one at same index
             const newImages = [...prev];
             const index = newImages.findIndex(
-              (img) => img.id === isolateTarget
+              (img) => img.id === isolateTarget,
             );
             if (index !== -1) {
               newImages[index] = newImage;
@@ -1424,7 +1424,7 @@ export default function OverlayPage() {
     canvas.height = Math.round(combinedHeight * optimalScale);
 
     console.log(
-      `Creating combined image at ${canvas.width}x${canvas.height} (scale: ${optimalScale.toFixed(2)}x)`
+      `Creating combined image at ${canvas.width}x${canvas.height} (scale: ${optimalScale.toFixed(2)}x)`,
     );
 
     // Draw each image in order using the pre-loaded elements
@@ -1446,7 +1446,7 @@ export default function OverlayPage() {
           -scaledWidth / 2,
           -scaledHeight / 2,
           scaledWidth,
-          scaledHeight
+          scaledHeight,
         );
       } else {
         // Handle cropping if exists
@@ -1465,7 +1465,7 @@ export default function OverlayPage() {
             relX,
             relY,
             scaledWidth,
-            scaledHeight
+            scaledHeight,
           );
         } else {
           ctx.drawImage(
@@ -1477,7 +1477,7 @@ export default function OverlayPage() {
             relX,
             relY,
             scaledWidth,
-            scaledHeight
+            scaledHeight,
           );
         }
       }
@@ -1682,14 +1682,14 @@ export default function OverlayPage() {
           apiKey={customApiKey}
           onStreamingUpdate={(id, url) => {
             setImages((prev) =>
-              prev.map((img) => (img.id === id ? { ...img, src: url } : img))
+              prev.map((img) => (img.id === id ? { ...img, src: url } : img)),
             );
           }}
           onComplete={(id, finalUrl) => {
             setImages((prev) =>
               prev.map((img) =>
-                img.id === id ? { ...img, src: finalUrl } : img
-              )
+                img.id === id ? { ...img, src: finalUrl } : img,
+              ),
             );
             setActiveGenerations((prev) => {
               const newMap = new Map(prev);
@@ -1850,8 +1850,8 @@ export default function OverlayPage() {
                                 prev.map((img) =>
                                   img.id === image.id
                                     ? { ...img, ...newAttrs }
-                                    : img
-                                )
+                                    : img,
+                                ),
                               );
                             }}
                             onDoubleClick={() => {
@@ -1898,7 +1898,7 @@ export default function OverlayPage() {
                       {croppingImageId &&
                         (() => {
                           const croppingImage = images.find(
-                            (img) => img.id === croppingImageId
+                            (img) => img.id === croppingImageId,
                           );
                           if (!croppingImage) return null;
 
@@ -1910,8 +1910,8 @@ export default function OverlayPage() {
                                   prev.map((img) =>
                                     img.id === croppingImageId
                                       ? { ...img, ...crop }
-                                      : img
-                                  )
+                                      : img,
+                                  ),
                                 );
                               }}
                               onCropEnd={async () => {
@@ -1932,7 +1932,7 @@ export default function OverlayPage() {
                                         cropX,
                                         cropY,
                                         cropWidth,
-                                        cropHeight
+                                        cropHeight,
                                       );
 
                                     setImages((prev) =>
@@ -1954,13 +1954,13 @@ export default function OverlayPage() {
                                               cropWidth: undefined,
                                               cropHeight: undefined,
                                             }
-                                          : img
-                                      )
+                                          : img,
+                                      ),
                                     );
                                   } catch (error) {
                                     console.error(
                                       "Failed to create cropped image:",
-                                      error
+                                      error,
                                     );
                                   }
                                 }
@@ -2097,7 +2097,7 @@ export default function OverlayPage() {
                     className={cn(
                       "h-8 px-3 gap-2",
                       customApiKey &&
-                        "border-green-500/50 bg-green-500/10 hover:border-green-500/70 hover:bg-green-500/20"
+                        "border-green-500/50 bg-green-500/10 hover:border-green-500/70 hover:bg-green-500/20",
                     )}
                     title={
                       customApiKey
@@ -2108,13 +2108,13 @@ export default function OverlayPage() {
                     <Key
                       className={cn(
                         "h-4 w-4",
-                        customApiKey && "text-green-500"
+                        customApiKey && "text-green-500",
                       )}
                     />
                     <span
                       className={cn(
                         "text-sm",
-                        customApiKey && "text-green-500"
+                        customApiKey && "text-green-500",
                       )}
                     >
                       {customApiKey ? "Custom Key" : "API Key"}
@@ -2321,7 +2321,7 @@ export default function OverlayPage() {
                         }
                         const selectedModel =
                           styleModels.find(
-                            (m) => m.id === generationSettings.styleId
+                            (m) => m.id === generationSettings.styleId,
                           ) || styleModels.find((m) => m.id === "simpsons");
                         return (
                           <>
@@ -2378,7 +2378,7 @@ export default function OverlayPage() {
                         className: "gap-2",
                         size: "sm",
                       }),
-                      "hidden xl:flex"
+                      "hidden xl:flex",
                     )}
                     href={"https://github.com/fal-ai-community/infinite-kanvas"}
                     target="_blank"
@@ -2456,7 +2456,7 @@ export default function OverlayPage() {
                     "group relative flex flex-col items-center gap-2 p-3 rounded border",
                     generationSettings.styleId === "custom"
                       ? "border-primary bg-primary/10"
-                      : "border-border hover:border-primary/50"
+                      : "border-border hover:border-primary/50",
                   )}
                 >
                   <div className="w-full aspect-square rounded-md bg-muted flex items-center justify-center">
@@ -2482,7 +2482,7 @@ export default function OverlayPage() {
                       "group relative flex flex-col items-center gap-2 p-3 rounded border",
                       generationSettings.styleId === model.id
                         ? "border-primary bg-primary/10"
-                        : "border-border hover:border-primary/50"
+                        : "border-border hover:border-primary/50",
                     )}
                   >
                     <div className="relative w-full aspect-square rounded-md overflow-hidden">

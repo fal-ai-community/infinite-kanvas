@@ -74,9 +74,7 @@ export const MiniMap: React.FC<MiniMapProps> = ({
           }}
         />
       </div>
-      <p className="text-xs text-muted-foreground mt-1 text-center">
-        Mini-map
-      </p>
+      <p className="text-xs text-muted-foreground mt-1 text-center">Mini-map</p>
     </div>
   );
 };

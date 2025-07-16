@@ -41,7 +41,7 @@ const alertVariants = cva(
       type: "info",
       container: "none",
     },
-  }
+  },
 );
 
 const Alert = React.forwardRef<
@@ -57,7 +57,7 @@ const Alert = React.forwardRef<
         "space-x-2 text-content-base",
         "[&>svg]:icon-lg [&>svg]:text-current",
         alertVariants({ type, container }),
-        className
+        className,
       )}
       {...props}
     >
@@ -76,7 +76,7 @@ const AlertTitle = React.forwardRef<
     ref={ref}
     className={cn(
       "alert-title mb-2 pt-1 font-heading text-lg font-medium leading-none tracking-tight",
-      className
+      className,
     )}
     {...props}
   />
