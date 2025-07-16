@@ -9,7 +9,7 @@ export const useStreamingImage = (src: string) => {
   >(undefined);
   const [isLoading, setIsLoading] = useState(false);
   const loadingRef = useRef<{ src: string; img: HTMLImageElement } | null>(
-    null
+    null,
   );
 
   useEffect(() => {
