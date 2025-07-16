@@ -5,9 +5,16 @@ interface BackgroundHandlerDeps {
   images: PlacedImage[];
   selectedIds: string[];
   setImages: React.Dispatch<React.SetStateAction<PlacedImage[]>>;
-  toast: (props: { title: string; description?: string; variant?: "default" | "destructive" }) => void;
+  toast: (props: {
+    title: string;
+    description?: string;
+    variant?: "default" | "destructive";
+  }) => void;
   saveToHistory: () => void;
-  removeBackground: (params: { imageUrl: string; apiKey?: string }) => Promise<{ url: string }>;
+  removeBackground: (params: {
+    imageUrl: string;
+    apiKey?: string;
+  }) => Promise<{ url: string }>;
   customApiKey?: string;
   falClient: any;
   setIsApiKeyDialogOpen: React.Dispatch<React.SetStateAction<boolean>>;
@@ -74,7 +81,7 @@ export const handleRemoveBackground = async (deps: BackgroundHandlerDeps) => {
         0,
         0,
         canvas.width,
-        canvas.height
+        canvas.height,
       );
 
       // Convert to blob and upload
@@ -89,7 +96,12 @@ export const handleRemoveBackground = async (deps: BackgroundHandlerDeps) => {
       });
 
       // Upload the processed image
-      const uploadResult = await uploadImageDirect(dataUrl, falClient, toast, setIsApiKeyDialogOpen);
+      const uploadResult = await uploadImageDirect(
+        dataUrl,
+        falClient,
+        toast,
+        setIsApiKeyDialogOpen,
+      );
 
       // Remove background using the API
       const result = await removeBackground({
@@ -110,8 +122,8 @@ export const handleRemoveBackground = async (deps: BackgroundHandlerDeps) => {
                 cropWidth: undefined,
                 cropHeight: undefined,
               }
-            : img
-        )
+            : img,
+        ),
       );
     }
 

@@ -48,7 +48,7 @@ export function CoreProviders({ children }: { children: ReactNode }) {
           }),
         }),
       ],
-    })
+    }),
   );
 
   return (

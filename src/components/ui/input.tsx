@@ -19,13 +19,13 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
             "placeholder:text-content-lighter",
             "disabled:cursor-not-allowed disabled:opacity-50",
           ],
-          className
+          className,
         )}
         ref={ref}
         {...props}
       />
     );
-  }
+  },
 );
 Input.displayName = "Input";
 

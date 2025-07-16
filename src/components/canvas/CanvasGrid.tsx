@@ -24,18 +24,14 @@ export const CanvasGrid: React.FC<CanvasGridProps> = ({
   const lines = [];
 
   // Calculate visible area in canvas coordinates
-  const startX =
-    Math.floor(-viewport.x / viewport.scale / gridSize) * gridSize;
-  const startY =
-    Math.floor(-viewport.y / viewport.scale / gridSize) * gridSize;
+  const startX = Math.floor(-viewport.x / viewport.scale / gridSize) * gridSize;
+  const startY = Math.floor(-viewport.y / viewport.scale / gridSize) * gridSize;
   const endX =
-    Math.ceil(
-      (canvasSize.width - viewport.x) / viewport.scale / gridSize
-    ) * gridSize;
+    Math.ceil((canvasSize.width - viewport.x) / viewport.scale / gridSize) *
+    gridSize;
   const endY =
-    Math.ceil(
-      (canvasSize.height - viewport.y) / viewport.scale / gridSize
-    ) * gridSize;
+    Math.ceil((canvasSize.height - viewport.y) / viewport.scale / gridSize) *
+    gridSize;
 
   // Vertical lines
   for (let x = startX; x <= endX; x += gridSize) {
@@ -45,7 +41,7 @@ export const CanvasGrid: React.FC<CanvasGridProps> = ({
         points={[x, startY, x, endY]}
         stroke={gridColor}
         strokeWidth={1}
-      />
+      />,
     );
   }
 
@@ -57,7 +53,7 @@ export const CanvasGrid: React.FC<CanvasGridProps> = ({
         points={[startX, y, endX, y]}
         stroke={gridColor}
         strokeWidth={1}
-      />
+      />,
     );
   }
 
