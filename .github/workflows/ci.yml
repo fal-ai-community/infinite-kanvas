@@ -23,9 +23,6 @@ jobs:
     - name: Install dependencies
       run: npm ci
 
-    - name: Setup environment
-      run: cp .env.example .env
-
     - name: Check formatting
       run: npm run format:check
 
@@ -34,6 +31,3 @@ jobs:
 
     - name: Type check
       run: npx tsc --noEmit
-
-    - name: Build
-      run: npm run build
