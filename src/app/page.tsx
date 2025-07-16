@@ -2045,7 +2045,6 @@ export default function OverlayPage() {
               bringForward={bringForward}
               sendBackward={sendBackward}
             />
-
           </div>
 
           <div className="fixed bottom-0 left-0 right-0 md:absolute md:bottom-4 md:left-1/2 md:transform md:-translate-x-1/2 z-20 p-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] md:p-0 md:pb-0 md:max-w-[600px]">
@@ -2146,7 +2145,7 @@ export default function OverlayPage() {
                       input.type = "file";
                       input.accept = "image/*";
                       input.multiple = true;
-                      
+
                       // Add to DOM for mobile compatibility
                       input.style.position = "fixed";
                       input.style.top = "-1000px";
@@ -2155,11 +2154,13 @@ export default function OverlayPage() {
                       input.style.pointerEvents = "none";
                       input.style.width = "1px";
                       input.style.height = "1px";
-                      
+
                       // Add event handlers
                       input.onchange = (e) => {
                         try {
-                          handleFileUpload((e.target as HTMLInputElement).files);
+                          handleFileUpload(
+                            (e.target as HTMLInputElement).files,
+                          );
                         } catch (error) {
                           console.error("File upload error:", error);
                           toast({
@@ -2174,26 +2175,30 @@ export default function OverlayPage() {
                           }
                         }
                       };
-                      
+
                       input.onerror = () => {
                         console.error("File input error");
                         if (input.parentNode) {
                           document.body.removeChild(input);
                         }
                       };
-                      
+
                       // Add to DOM and trigger
                       document.body.appendChild(input);
-                      
+
                       // Use setTimeout to ensure the input is properly attached
                       setTimeout(() => {
                         try {
                           input.click();
                         } catch (error) {
-                          console.error("Failed to trigger file dialog:", error);
+                          console.error(
+                            "Failed to trigger file dialog:",
+                            error,
+                          );
                           toast({
                             title: "Upload unavailable",
-                            description: "File upload is not available. Try using drag & drop instead.",
+                            description:
+                              "File upload is not available. Try using drag & drop instead.",
                             variant: "destructive",
                           });
                           if (input.parentNode) {
@@ -2201,7 +2206,7 @@ export default function OverlayPage() {
                           }
                         }
                       }, 10);
-                      
+
                       // Cleanup after timeout in case dialog was cancelled
                       setTimeout(() => {
                         if (input.parentNode) {
