@@ -17,6 +17,7 @@ interface CanvasImageProps {
   images: PlacedImage[];
   setImages: React.Dispatch<React.SetStateAction<PlacedImage[]>>;
   isDraggingImage: boolean;
+  isCroppingImage: boolean;
   dragStartPositions: Map<string, { x: number; y: number }>;
 }
 
@@ -32,6 +33,7 @@ export const CanvasImage: React.FC<CanvasImageProps> = ({
   images,
   setImages,
   isDraggingImage,
+  isCroppingImage,
   dragStartPositions,
 }) => {
   const shapeRef = useRef<Konva.Image>(null);
@@ -66,7 +68,7 @@ export const CanvasImage: React.FC<CanvasImageProps> = ({
         height={image.height}
         rotation={image.rotation}
         crop={
-          image.cropX !== undefined
+          image.cropX !== undefined && !isCroppingImage
             ? {
                 x: (image.cropX || 0) * (img?.naturalWidth || 0),
                 y: (image.cropY || 0) * (img?.naturalHeight || 0),

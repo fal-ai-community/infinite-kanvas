@@ -1776,6 +1776,7 @@ export default function OverlayPage() {
                             images={images}
                             setImages={setImages}
                             isDraggingImage={isDraggingImage}
+                            isCroppingImage={croppingImageId == image.id}
                             dragStartPositions={dragStartPositions}
                           />
                         ))}
