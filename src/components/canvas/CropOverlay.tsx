@@ -32,6 +32,7 @@ export const CropOverlay: React.FC<CropOverlayProps> = ({
   const cropTransformerRef = useRef<Konva.Transformer>(null);
   const [grid, setGrid] = useState<Array<{ points: number[] }>>([]);
   const [isHoveringDone, setIsHoveringDone] = useState(false);
+  const [stageScale, setStageScale] = useState(1);
 
   // Initialize crop values (default to full image if not set)
   const cropX = (image.cropX ?? 0) * image.width;
@@ -65,6 +66,46 @@ export const CropOverlay: React.FC<CropOverlayProps> = ({
   useEffect(() => {
     updateGrid(cropWidth, cropHeight);
   }, [cropWidth, cropHeight]);
+
+  // Get stage scale for proper button sizing
+  useEffect(() => {
+    const stage = cropRectRef.current?.getStage();
+    if (stage) {
+      const updateScale = () => setStageScale(stage.scaleX());
+      updateScale();
+      stage.on('scaleChange', updateScale);
+      stage.on('transform', updateScale);
+      return () => {
+        stage.off('scaleChange', updateScale);
+        stage.off('transform', updateScale);
+      };
+    }
+  }, []);
+
+  // Calculate button position to ensure it's always visible
+  const getButtonPosition = () => {
+    const buttonWidth = 80;
+    const buttonHeight = 40;
+    const padding = 10;
+    
+    // Try to position button at top-right of crop area
+    let buttonX = cropX + cropWidth - buttonWidth;
+    let buttonY = cropY - buttonHeight - padding;
+    
+    // If button would be outside image bounds, adjust position
+    if (buttonX < padding) buttonX = padding;
+    if (buttonY < padding) buttonY = cropY + padding;
+    if (buttonX + buttonWidth > image.width - padding) {
+      buttonX = image.width - buttonWidth - padding;
+    }
+    if (buttonY + buttonHeight > image.height - padding) {
+      buttonY = image.height - buttonHeight - padding;
+    }
+    
+    return { x: buttonX, y: buttonY };
+  };
+
+  const buttonPos = getButtonPosition();
 
   const handleTransform = () => {
     const node = cropRectRef.current;
@@ -221,22 +262,24 @@ export const CropOverlay: React.FC<CropOverlayProps> = ({
         flipEnabled={false}
       />
 
-      {/* Done button - styled to match our button component */}
+      {/* Done button - styled to match our UI design system */}
       <Group
-        x={cropX + cropWidth - 70}
-        y={cropY - 45}
+        x={buttonPos.x}
+        y={buttonPos.y}
         onMouseEnter={() => setIsHoveringDone(true)}
         onMouseLeave={() => setIsHoveringDone(false)}
         onClick={onCropEnd}
         onTap={onCropEnd}
       >
         <Rect
-          width={70}
-          height={36}
-          fill={isHoveringDone ? "#2563eb" : "#3b82f6"}
+          width={80}
+          height={40}
+          fill={isHoveringDone ? "#8b5cf6" : "#a855f7"}
+          stroke="#6b7280"
+          strokeWidth={1}
           cornerRadius={6}
           shadowColor="black"
-          shadowBlur={8}
+          shadowBlur={4}
           shadowOpacity={0.15}
           shadowOffsetY={2}
         />
@@ -246,8 +289,8 @@ export const CropOverlay: React.FC<CropOverlayProps> = ({
           fontFamily="system-ui, -apple-system, sans-serif"
           fontStyle="500"
           fill="white"
-          width={70}
-          height={36}
+          width={80}
+          height={40}
           align="center"
           verticalAlign="middle"
           listening={false}
