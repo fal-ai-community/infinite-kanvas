@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from "react";
+import React, { useRef, useState, useEffect, useLayoutEffect } from 'react';
 import {
   Rect,
   Group,
@@ -6,9 +6,9 @@ import {
   Line,
   Image as KonvaImage,
   Transformer,
-} from "react-konva";
-import Konva from "konva";
-import type { PlacedImage } from "@/types/canvas";
+} from 'react-konva';
+import Konva from 'konva';
+import type { PlacedImage } from '@/types/canvas';
 
 interface CropOverlayProps {
   image: PlacedImage;
@@ -33,6 +33,7 @@ export const CropOverlay: React.FC<CropOverlayProps> = ({
   const [grid, setGrid] = useState<Array<{ points: number[] }>>([]);
   const [isHoveringDone, setIsHoveringDone] = useState(false);
   const [stageScale, setStageScale] = useState(1);
+  const [scaleInitialized, setScaleInitialized] = useState(false);
 
   // Initialize crop values (default to full image if not set)
   const cropX = (image.cropX ?? 0) * image.width;
@@ -67,41 +68,60 @@ export const CropOverlay: React.FC<CropOverlayProps> = ({
     updateGrid(cropWidth, cropHeight);
   }, [cropWidth, cropHeight]);
 
-  // Get stage scale for proper button sizing
-  useEffect(() => {
+  // Get initial stage scale synchronously to prevent twitching
+  useLayoutEffect(() => {
     const stage = cropRectRef.current?.getStage();
     if (stage) {
-      const updateScale = () => setStageScale(stage.scaleX());
-      updateScale();
-      stage.on('scaleChange', updateScale);
-      stage.on('transform', updateScale);
+      const initialScale = stage.scaleX();
+      setStageScale(initialScale);
+      setScaleInitialized(true);
+    }
+  }, []);
+
+  // Get stage scale for proper button sizing
+  useEffect(() => {
+    const updateScale = () => {
+      const stage = cropRectRef.current?.getStage();
+      if (stage) {
+        const newScale = stage.scaleX();
+        setStageScale(newScale);
+      }
+    };
+
+    // Set up event listeners for scale changes
+    const stage = cropRectRef.current?.getStage();
+    if (stage) {
+      // Listen for events that change the scale
+      stage.on('wheel', updateScale);
+      stage.on('dragend', updateScale);
+      stage.on('transformend', updateScale);
+
       return () => {
-        stage.off('scaleChange', updateScale);
-        stage.off('transform', updateScale);
+        stage.off('wheel', updateScale);
+        stage.off('dragend', updateScale);
+        stage.off('transformend', updateScale);
       };
     }
   }, []);
 
-  // Calculate button position to ensure it's always visible
+  // Calculate button position - always at upper right corner (fixed positioning)
   const getButtonPosition = () => {
-    const buttonWidth = 80;
-    const buttonHeight = 40;
-    const padding = 10;
-    
-    // Try to position button at top-right of crop area
-    let buttonX = cropX + cropWidth - buttonWidth;
-    let buttonY = cropY - buttonHeight - padding;
-    
-    // If button would be outside image bounds, adjust position
-    if (buttonX < padding) buttonX = padding;
-    if (buttonY < padding) buttonY = cropY + padding;
-    if (buttonX + buttonWidth > image.width - padding) {
-      buttonX = image.width - buttonWidth - padding;
-    }
-    if (buttonY + buttonHeight > image.height - padding) {
-      buttonY = image.height - buttonHeight - padding;
-    }
-    
+    // Use the same scaled dimensions as the button render
+    const buttonWidth = 80 / stageScale;
+    const buttonHeight = 40 / stageScale;
+    const padding = 15 / stageScale;
+
+    // Calculate absolute positions on stage (accounting for image position)
+    const absoluteCropX = image.x + cropX;
+    const absoluteCropY = image.y + cropY;
+    const absoluteCropRight = absoluteCropX + cropWidth;
+    const absoluteCropTop = absoluteCropY;
+
+    // Always position button at upper right corner of crop area
+    // Use scaled dimensions to match the rendered button size
+    const buttonX = absoluteCropRight - buttonWidth;
+    const buttonY = absoluteCropTop - buttonHeight - padding;
+
     return { x: buttonX, y: buttonY };
   };
 
@@ -184,118 +204,123 @@ export const CropOverlay: React.FC<CropOverlayProps> = ({
   };
 
   return (
-    <Group x={image.x} y={image.y} name="crop-overlay">
-      {/* Semi-transparent mask */}
-      <Rect
-        width={image.width}
-        height={image.height}
-        fill="black"
-        opacity={0.5}
-        listening={false}
-      />
-
-      {/* Clipped image (visible crop area) */}
-      <Group
-        clip={{
-          x: cropX,
-          y: cropY,
-          width: cropWidth,
-          height: cropHeight,
-        }}
-      >
-        <KonvaImage
-          image={imageElement}
+    <>
+      {/* Crop overlay group */}
+      <Group x={image.x} y={image.y} name="crop-overlay">
+        {/* Semi-transparent mask */}
+        <Rect
           width={image.width}
           height={image.height}
-        />
-      </Group>
-
-      {/* Grid lines */}
-      <Group x={cropX} y={cropY}>
-        {grid.map((line, index) => (
-          <Line
-            key={index}
-            points={line.points}
-            stroke="white"
-            strokeWidth={1}
-            opacity={0.5}
-          />
-        ))}
-      </Group>
-
-      {/* Crop rectangle */}
-      <Rect
-        ref={cropRectRef}
-        x={cropX}
-        y={cropY}
-        width={cropWidth}
-        height={cropHeight}
-        stroke="#3b82f6"
-        strokeWidth={2}
-        draggable
-        onDragMove={handleDragMove}
-        onDragEnd={handleDragEnd}
-        onTransformEnd={handleTransform}
-      />
-
-      {/* Transformer */}
-      <Transformer
-        ref={cropTransformerRef}
-        boundBoxFunc={(oldBox, newBox) => {
-          // Limit minimum size
-          if (newBox.width < 20 || newBox.height < 20) {
-            return oldBox;
-          }
-          return newBox;
-        }}
-        enabledAnchors={[
-          "top-left",
-          "top-center",
-          "top-right",
-          "middle-left",
-          "middle-right",
-          "bottom-left",
-          "bottom-center",
-          "bottom-right",
-        ]}
-        rotateEnabled={false}
-        flipEnabled={false}
-      />
-
-      {/* Done button - styled to match our UI design system */}
-      <Group
-        x={buttonPos.x}
-        y={buttonPos.y}
-        onMouseEnter={() => setIsHoveringDone(true)}
-        onMouseLeave={() => setIsHoveringDone(false)}
-        onClick={onCropEnd}
-        onTap={onCropEnd}
-      >
-        <Rect
-          width={80}
-          height={40}
-          fill={isHoveringDone ? "#8b5cf6" : "#a855f7"}
-          stroke="#6b7280"
-          strokeWidth={1}
-          cornerRadius={6}
-          shadowColor="black"
-          shadowBlur={4}
-          shadowOpacity={0.15}
-          shadowOffsetY={2}
-        />
-        <Text
-          text="Done"
-          fontSize={14}
-          fontFamily="system-ui, -apple-system, sans-serif"
-          fontStyle="500"
-          fill="white"
-          width={80}
-          height={40}
-          align="center"
-          verticalAlign="middle"
+          fill="black"
+          opacity={0.5}
           listening={false}
         />
+
+        {/* Clipped image (visible crop area) */}
+        <Group
+          clip={{
+            x: cropX,
+            y: cropY,
+            width: cropWidth,
+            height: cropHeight,
+          }}
+        >
+          <KonvaImage
+            image={imageElement}
+            width={image.width}
+            height={image.height}
+          />
+        </Group>
+
+        {/* Grid lines */}
+        <Group x={cropX} y={cropY}>
+          {grid.map((line, index) => (
+            <Line
+              key={index}
+              points={line.points}
+              stroke="white"
+              strokeWidth={1}
+              opacity={0.5}
+            />
+          ))}
+        </Group>
+
+        {/* Crop rectangle */}
+        <Rect
+          ref={cropRectRef}
+          x={cropX}
+          y={cropY}
+          width={cropWidth}
+          height={cropHeight}
+          stroke="#3b82f6"
+          strokeWidth={2}
+          draggable
+          onDragMove={handleDragMove}
+          onDragEnd={handleDragEnd}
+          onTransformEnd={handleTransform}
+        />
+
+        {/* Transformer */}
+        <Transformer
+          ref={cropTransformerRef}
+          boundBoxFunc={(oldBox, newBox) => {
+            // Limit minimum size
+            if (newBox.width < 20 || newBox.height < 20) {
+              return oldBox;
+            }
+            return newBox;
+          }}
+          enabledAnchors={[
+            'top-left',
+            'top-center',
+            'top-right',
+            'middle-left',
+            'middle-right',
+            'bottom-left',
+            'bottom-center',
+            'bottom-right',
+          ]}
+          rotateEnabled={false}
+          flipEnabled={false}
+        />
       </Group>
-    </Group>
+
+      {/* Done button - positioned in absolute stage coordinates */}
+      {scaleInitialized && (
+        <Group
+          x={buttonPos.x}
+          y={buttonPos.y}
+          onMouseEnter={() => setIsHoveringDone(true)}
+          onMouseLeave={() => setIsHoveringDone(false)}
+          onClick={onCropEnd}
+          onTap={onCropEnd}
+        >
+          <Rect
+            width={80 / stageScale}
+            height={40 / stageScale}
+            fill={isHoveringDone ? '#8b5cf6' : '#a855f7'}
+            stroke="#6b7280"
+            strokeWidth={1 / stageScale}
+            cornerRadius={6 / stageScale}
+            shadowColor="black"
+            shadowBlur={4 / stageScale}
+            shadowOpacity={0.15}
+            shadowOffsetY={2 / stageScale}
+          />
+          <Text
+            text="Done"
+            fontSize={14 / stageScale}
+            fontFamily="system-ui, -apple-system, sans-serif"
+            fontStyle="500"
+            fill="white"
+            width={80 / stageScale}
+            height={40 / stageScale}
+            align="center"
+            verticalAlign="middle"
+            listening={false}
+          />
+        </Group>
+      )}
+    </>
   );
 };
