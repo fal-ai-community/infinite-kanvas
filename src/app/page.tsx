@@ -1723,19 +1723,19 @@ export default function OverlayPage() {
         <div className="relative w-full h-full">
           {/* Gradient Overlays */}
           <div
-            className="pointer-events-none absolute top-0 left-0 right-0 h-24 bg-gradient-to-b from-background/80 to-transparent z-10"
+            className="pointer-events-none absolute top-0 left-0 right-0 h-24 bg-gradient-to-b from-background to-transparent z-10"
             aria-hidden="true"
           />
           <div
-            className="pointer-events-none absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-background/80 to-transparent z-10"
+            className="pointer-events-none absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-background to-transparent z-10"
             aria-hidden="true"
           />
           <div
-            className="pointer-events-none absolute top-0 bottom-0 left-0 w-24 bg-gradient-to-r from-background/80 to-transparent z-10"
+            className="pointer-events-none absolute top-0 bottom-0 left-0 w-24 bg-gradient-to-r from-background to-transparent z-10"
             aria-hidden="true"
           />
           <div
-            className="pointer-events-none absolute top-0 bottom-0 right-0 w-24 bg-gradient-to-l from-background/80 to-transparent z-10"
+            className="pointer-events-none absolute top-0 bottom-0 right-0 w-24 bg-gradient-to-l from-background to-transparent z-10"
             aria-hidden="true"
           />
           <ContextMenu
@@ -2386,8 +2386,8 @@ export default function OverlayPage() {
 
           <div className="relative">
             {/* Fixed gradient overlays outside scrollable area */}
-            <div className="pointer-events-none absolute -top-[1px] left-0 right-0 z-30 h-4 md:h-12 bg-gradient-to-b from-background/80 via-background/90 to-transparent" />
-            <div className="pointer-events-none absolute -bottom-[1px] left-0 right-0 z-30 h-4 md:h-12 bg-gradient-to-t from-background/80 via-background/90 to-transparent" />
+            <div className="pointer-events-none absolute -top-[1px] left-0 right-0 z-30 h-4 md:h-12 bg-gradient-to-b from-background via-background/90 to-transparent" />
+            <div className="pointer-events-none absolute -bottom-[1px] left-0 right-0 z-30 h-4 md:h-12 bg-gradient-to-t from-background via-background/90 to-transparent" />
 
             {/* Scrollable content container */}
             <div className="overflow-y-auto max-h-[60vh] px-1">
