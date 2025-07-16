@@ -2,6 +2,12 @@ import React from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   Play,
   Copy,
   Crop,
@@ -9,6 +15,11 @@ import {
   Combine,
   Download,
   Trash2,
+  Layers,
+  ChevronUp,
+  ChevronDown,
+  MoveUp,
+  MoveDown,
 } from "lucide-react";
 import { SpinnerIcon } from "@/components/icons";
 import type { PlacedImage, GenerationSettings } from "@/types/canvas";
@@ -24,6 +35,10 @@ interface MobileToolbarProps {
   handleCombineImages: () => void;
   handleDelete: () => void;
   setCroppingImageId: (id: string | null) => void;
+  sendToFront: () => void;
+  sendToBack: () => void;
+  bringForward: () => void;
+  sendBackward: () => void;
 }
 
 export const MobileToolbar: React.FC<MobileToolbarProps> = ({
@@ -37,6 +52,10 @@ export const MobileToolbar: React.FC<MobileToolbarProps> = ({
   handleCombineImages,
   handleDelete,
   setCroppingImageId,
+  sendToFront,
+  sendToBack,
+  bringForward,
+  sendBackward,
 }) => {
   return (
     <div
@@ -110,6 +129,76 @@ export const MobileToolbar: React.FC<MobileToolbarProps> = ({
       >
         <Combine className="h-12 w-12" />
       </Button>
+
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="secondary"
+            size="sm"
+            disabled={selectedIds.length === 0}
+            className="w-12 h-12 p-0"
+            title="Layer Order"
+          >
+            <Layers className="h-12 w-12" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          side="right"
+          sideOffset={10}
+          alignOffset={-4}
+          align="start"
+          className="w-48 space-y-1 bg-background/80 border rounded p-1"
+        >
+          <DropdownMenuItem asChild>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={sendToFront}
+              disabled={selectedIds.length === 0}
+              className="w-full h-12 justify-start gap-3 px-3"
+            >
+              <MoveUp className="h-6 w-6" />
+              <span className="font-medium">Send to Front</span>
+            </Button>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={bringForward}
+              disabled={selectedIds.length === 0}
+              className="w-full h-12 justify-start gap-3 px-3"
+            >
+              <ChevronUp className="h-6 w-6" />
+              <span className="font-medium">Bring Forward</span>
+            </Button>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={sendBackward}
+              disabled={selectedIds.length === 0}
+              className="w-full h-12 justify-start gap-3 px-3"
+            >
+              <ChevronDown className="h-6 w-6" />
+              <span className="font-medium">Send Backward</span>
+            </Button>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={sendToBack}
+              disabled={selectedIds.length === 0}
+              className="w-full h-12 justify-start gap-3 px-3"
+            >
+              <MoveDown className="h-6 w-6" />
+              <span className="font-medium">Send to Back</span>
+            </Button>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
 
       <Button
         variant="secondary"
