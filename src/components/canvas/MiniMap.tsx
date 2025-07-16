@@ -56,8 +56,10 @@ export const MiniMap: React.FC<MiniMapProps> = ({
     const canvasX = (clickX - offsetX) / scale + minX;
     const canvasY = (clickY - offsetY) / scale + minY;
 
-    const newViewportX = -(canvasX - canvasSize.width / 2 / viewport.scale) * viewport.scale;
-    const newViewportY = -(canvasY - canvasSize.height / 2 / viewport.scale) * viewport.scale;
+    const newViewportX =
+      -(canvasX - canvasSize.width / 2 / viewport.scale) * viewport.scale;
+    const newViewportY =
+      -(canvasY - canvasSize.height / 2 / viewport.scale) * viewport.scale;
 
     setViewport({
       x: newViewportX,
@@ -68,7 +70,7 @@ export const MiniMap: React.FC<MiniMapProps> = ({
 
   return (
     <div className="absolute top-4 right-2 md:right-4 z-20 bg-background/95 border rounded shadow-sm p-1 md:p-2">
-      <div 
+      <div
         className="relative w-32 h-24 md:w-48 md:h-32 bg-muted rounded overflow-hidden cursor-pointer hover:bg-muted/80 transition-colors"
         onClick={handleMiniMapClick}
       >
@@ -97,9 +99,7 @@ export const MiniMap: React.FC<MiniMapProps> = ({
           }}
         />
       </div>
-      <p className="text-xs text-muted-foreground mt-1 text-center">
-        Mini-map
-      </p>
+      <p className="text-xs text-muted-foreground mt-1 text-center">Mini-map</p>
     </div>
   );
 };
