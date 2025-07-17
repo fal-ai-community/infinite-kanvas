@@ -77,6 +77,7 @@ import { MiniMap } from "@/components/canvas/MiniMap";
 import { ZoomControls } from "@/components/canvas/ZoomControls";
 import { MobileToolbar } from "@/components/canvas/MobileToolbar";
 import { CanvasContextMenu } from "@/components/canvas/CanvasContextMenu";
+import { DimensionDisplay } from "@/components/canvas/DimensionDisplay";
 import Image from "next/image";
 
 // Import handlers
@@ -2440,6 +2441,14 @@ export default function OverlayPage() {
             viewport={viewport}
             setViewport={setViewport}
             canvasSize={canvasSize}
+          />
+
+          {/* Dimension display for selected images */}
+          <DimensionDisplay
+            selectedImages={images.filter((img) =>
+              selectedIds.includes(img.id),
+            )}
+            viewport={viewport}
           />
         </div>
       </main>
