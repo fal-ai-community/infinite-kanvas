@@ -12,6 +12,8 @@ export interface PlacedImage {
   cropY?: number;
   cropWidth?: number;
   cropHeight?: number;
+  isLoading?: boolean;
+  loadingMessage?: string;
 }
 
 export interface HistoryState {

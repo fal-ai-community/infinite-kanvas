@@ -581,9 +581,47 @@ export default function OverlayPage() {
 
     Array.from(files).forEach((file, index) => {
       if (file.type.startsWith("image/")) {
+        const id = `img-${Date.now()}-${Math.random()}`;
+
+        // Calculate initial position and size
+        let x, y;
+        if (position) {
+          // Convert screen position to canvas coordinates
+          x = (position.x - viewport.x) / viewport.scale - 150; // Half of default width
+          y = (position.y - viewport.y) / viewport.scale - 150; // Half of default height
+        } else {
+          // Center of viewport
+          const viewportCenterX =
+            (canvasSize.width / 2 - viewport.x) / viewport.scale;
+          const viewportCenterY =
+            (canvasSize.height / 2 - viewport.y) / viewport.scale;
+          x = viewportCenterX - 150; // Half of default width
+          y = viewportCenterY - 150; // Half of default height
+        }
+
+        // Add offset for multiple files
+        if (index > 0) {
+          x += index * 20;
+          y += index * 20;
+        }
+
+        // Add placeholder immediately with loading state
+        const placeholderImage: PlacedImage = {
+          id,
+          src: "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7", // 1x1 transparent gif
+          x,
+          y,
+          width: 300,
+          height: 300,
+          rotation: 0,
+          isLoading: true,
+          loadingMessage: "Processing image...",
+        };
+
+        setImages((prev) => [...prev, placeholderImage]);
+
         const reader = new FileReader();
         reader.onload = (e) => {
-          const id = `img-${Date.now()}-${Math.random()}`;
           const img = new window.Image();
           img.crossOrigin = "anonymous"; // Enable CORS
           img.onload = () => {
@@ -597,43 +635,36 @@ export default function OverlayPage() {
               width = maxSize * aspectRatio;
             }
 
-            // Place image at position or center of current viewport
-            let x, y;
-            if (position) {
-              // Convert screen position to canvas coordinates
-              x = (position.x - viewport.x) / viewport.scale - width / 2;
-              y = (position.y - viewport.y) / viewport.scale - height / 2;
-            } else {
-              // Center of viewport
-              const viewportCenterX =
-                (canvasSize.width / 2 - viewport.x) / viewport.scale;
-              const viewportCenterY =
-                (canvasSize.height / 2 - viewport.y) / viewport.scale;
-              x = viewportCenterX - width / 2;
-              y = viewportCenterY - height / 2;
-            }
-
-            // Add offset for multiple files
-            if (index > 0) {
-              x += index * 20;
-              y += index * 20;
-            }
-
-            setImages((prev) => [
-              ...prev,
-              {
-                id,
-                src: e.target?.result as string,
-                x,
-                y,
-                width,
-                height,
-                rotation: 0,
-              },
-            ]);
+            // Update the placeholder with actual image data
+            setImages((prev) =>
+              prev.map((prevImg) =>
+                prevImg.id === id
+                  ? {
+                      ...prevImg,
+                      src: e.target?.result as string,
+                      width,
+                      height,
+                      isLoading: false,
+                      loadingMessage: undefined,
+                    }
+                  : prevImg,
+              ),
+            );
           };
+
+          img.onerror = () => {
+            // Handle error by removing the placeholder
+            setImages((prev) => prev.filter((prevImg) => prevImg.id !== id));
+          };
+
           img.src = e.target?.result as string;
         };
+
+        reader.onerror = () => {
+          // Handle error by removing the placeholder
+          setImages((prev) => prev.filter((prevImg) => prevImg.id !== id));
+        };
+
         reader.readAsDataURL(file);
       }
     });
@@ -1135,6 +1166,18 @@ export default function OverlayPage() {
       }
 
       // Show loading state
+      setImages((prev) =>
+        prev.map((img) =>
+          img.id === isolateTarget
+            ? {
+                ...img,
+                isLoading: true,
+                loadingMessage: `Isolating "${isolateInputValue}"...`,
+              }
+            : img,
+        ),
+      );
+
       toast({
         title: "Processing...",
         description: `Isolating "${isolateInputValue}" from image`,
@@ -1280,6 +1323,8 @@ export default function OverlayPage() {
             ...currentImage,
             id: `isolated-${Date.now()}-${Math.random()}`,
             src: newImageUrl,
+            isLoading: false,
+            loadingMessage: undefined,
             // Remove crop values since we've applied them
             cropX: undefined,
             cropY: undefined,
@@ -1332,6 +1377,16 @@ export default function OverlayPage() {
       setIsIsolating(false);
     } catch (error) {
       console.error("Error isolating object:", error);
+
+      // Remove loading state on error
+      setImages((prev) =>
+        prev.map((img) =>
+          img.id === isolateTarget
+            ? { ...img, isLoading: false, loadingMessage: undefined }
+            : img,
+        ),
+      );
+
       toast({
         title: "Failed to isolate object",
         description: error instanceof Error ? error.message : "Unknown error",
@@ -1682,13 +1737,29 @@ export default function OverlayPage() {
           apiKey={customApiKey}
           onStreamingUpdate={(id, url) => {
             setImages((prev) =>
-              prev.map((img) => (img.id === id ? { ...img, src: url } : img)),
+              prev.map((img) =>
+                img.id === id
+                  ? {
+                      ...img,
+                      src: url,
+                      isLoading: false,
+                      loadingMessage: undefined,
+                    }
+                  : img,
+              ),
             );
           }}
           onComplete={(id, finalUrl) => {
             setImages((prev) =>
               prev.map((img) =>
-                img.id === id ? { ...img, src: finalUrl } : img,
+                img.id === id
+                  ? {
+                      ...img,
+                      src: finalUrl,
+                      isLoading: false,
+                      loadingMessage: undefined,
+                    }
+                  : img,
               ),
             );
             setActiveGenerations((prev) => {
