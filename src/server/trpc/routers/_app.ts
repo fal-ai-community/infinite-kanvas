@@ -50,7 +50,301 @@ async function downloadImage(url: string): Promise<Buffer> {
   return Buffer.from(await response.arrayBuffer());
 }
 
+// Video models
+const VIDEO_MODELS = {
+  textToVideo: "fal-ai/stable-video-diffusion",
+  imageToVideoLite: "fal-ai/bytedance/seedance/v1/lite/image-to-video", // SeeDANCE Lite version
+  imageToVideoPro: "fal-ai/bytedance/seedance/v1/pro/image-to-video", // SeeDANCE Pro version
+  videoToVideo: "fal-ai/stable-video-diffusion-img2vid", // This is a placeholder, replace with actual model when available
+};
+
 export const appRouter = router({
+  transformVideo: publicProcedure
+    .input(
+      z.object({
+        videoUrl: z.string().url(),
+        prompt: z.string().optional(),
+        styleId: z.string().optional(),
+        apiKey: z.string().optional(),
+      }),
+    )
+    .subscription(async function* ({ input, signal, ctx }) {
+      try {
+        const falClient = await getFalClient(input.apiKey, ctx);
+
+        // Create a unique ID for this transformation
+        const transformationId = `vidtrans_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+
+        // Yield initial progress
+        yield tracked(`${transformationId}_start`, {
+          type: "progress",
+          progress: 0,
+          status: "Starting video transformation...",
+        });
+
+        // Start streaming from fal.ai
+        const stream = await falClient.stream(VIDEO_MODELS.videoToVideo, {
+          input: {
+            video_url: input.videoUrl,
+            prompt: input.prompt || "",
+            style: input.styleId || "",
+            num_inference_steps: 25,
+            guidance_scale: 7.5,
+          },
+        });
+
+        let eventIndex = 0;
+
+        // Stream events as they come
+        for await (const event of stream) {
+          if (signal?.aborted) {
+            break;
+          }
+
+          const eventId = `${transformationId}_${eventIndex++}`;
+
+          // Calculate progress percentage if available
+          const progress =
+            event.progress !== undefined
+              ? Math.floor(event.progress * 100)
+              : eventIndex * 5; // Fallback progress estimation
+
+          yield tracked(eventId, {
+            type: "progress",
+            progress,
+            status: event.status || "Transforming video...",
+            data: event,
+          });
+        }
+
+        // Get the final result
+        const result = await stream.done();
+
+        // Check if we have a valid video URL
+        if (!result.video_url) {
+          yield tracked(`${transformationId}_error`, {
+            type: "error",
+            error: "No video generated",
+          });
+          return;
+        }
+
+        // Send the final video
+        yield tracked(`${transformationId}_complete`, {
+          type: "complete",
+          videoUrl: result.video_url,
+          duration: result.duration || 3, // Default to 3 seconds if not provided
+        });
+      } catch (error) {
+        console.error("Error in video transformation:", error);
+        yield tracked(`error_${Date.now()}`, {
+          type: "error",
+          error:
+            error instanceof Error
+              ? error.message
+              : "Failed to transform video",
+        });
+      }
+    }),
+  generateImageToVideo: publicProcedure
+    .input(
+      z.object({
+        imageUrl: z.string().url(),
+        prompt: z.string().optional(),
+        duration: z.number().optional().default(5),
+        modelVersion: z.enum(["lite", "pro"]).optional().default("lite"),
+        resolution: z
+          .enum(["480p", "720p", "1080p"])
+          .optional()
+          .default("720p"),
+        cameraFixed: z.boolean().optional().default(false),
+        seed: z.number().optional().default(-1),
+        apiKey: z.string().optional(),
+      }),
+    )
+    .subscription(async function* ({ input, signal, ctx }) {
+      try {
+        const falClient = await getFalClient(input.apiKey, ctx);
+
+        // Create a unique ID for this generation
+        const generationId = `img2vid_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+
+        // Yield initial progress
+        yield tracked(`${generationId}_start`, {
+          type: "progress",
+          progress: 0,
+          status: "Starting image-to-video conversion...",
+        });
+
+        // Use subscribe instead of stream for SeeDANCE model
+        // First yield a progress update to show we're starting
+        yield tracked(`${generationId}_starting`, {
+          type: "progress",
+          progress: 10,
+          status: "Starting video generation...",
+        });
+
+        // Call the SeeDANCE API using subscribe method
+        // Convert duration to one of the allowed values: "5" or "10"
+        const duration = input.duration <= 5 ? "5" : "10";
+
+        // Ensure prompt is descriptive enough
+        const prompt =
+          input.prompt || "A smooth animation of the image with natural motion";
+
+        // Determine which model to use based on the modelVersion
+        const modelEndpoint =
+          input.modelVersion === "pro"
+            ? VIDEO_MODELS.imageToVideoPro
+            : VIDEO_MODELS.imageToVideoLite;
+
+        console.log(
+          `Calling SeeDANCE ${input.modelVersion.toUpperCase()} API with parameters:`,
+          {
+            image_url: input.imageUrl,
+            prompt,
+            duration,
+            resolution: input.resolution,
+            camera_fixed: input.cameraFixed,
+            seed: input.seed,
+          },
+        );
+
+        const result = await falClient.subscribe(modelEndpoint, {
+          input: {
+            image_url: input.imageUrl,
+            prompt, // Descriptive prompt
+            duration, // Only "5" or "10" are allowed
+            resolution: input.resolution, // Use selected resolution
+            camera_fixed:
+              input.cameraFixed !== undefined ? input.cameraFixed : false, // Use explicit camera fixed setting
+            seed: input.seed !== undefined ? input.seed : -1, // Use provided seed or default to random
+          },
+        });
+
+        // Yield progress update
+        yield tracked(`${generationId}_progress`, {
+          type: "progress",
+          progress: 100,
+          status: "Video generation complete",
+        });
+
+        // Check if we have a valid video URL
+        if (!result.data?.video?.url) {
+          yield tracked(`${generationId}_error`, {
+            type: "error",
+            error: "No video generated",
+          });
+          return;
+        }
+
+        // Send the final video
+        yield tracked(`${generationId}_complete`, {
+          type: "complete",
+          videoUrl: result.data.video.url,
+          duration: input.duration,
+        });
+      } catch (error) {
+        console.error("Error in image-to-video conversion:", error);
+        yield tracked(`error_${Date.now()}`, {
+          type: "error",
+          error:
+            error instanceof Error
+              ? error.message
+              : "Failed to convert image to video",
+        });
+      }
+    }),
+
+  generateTextToVideo: publicProcedure
+    .input(
+      z.object({
+        prompt: z.string(),
+        duration: z.number().optional().default(3),
+        styleId: z.string().optional(),
+        apiKey: z.string().optional(),
+      }),
+    )
+    .subscription(async function* ({ input, signal, ctx }) {
+      try {
+        const falClient = await getFalClient(input.apiKey, ctx);
+
+        // Create a unique ID for this generation
+        const generationId = `vid_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+
+        // Yield initial progress
+        yield tracked(`${generationId}_start`, {
+          type: "progress",
+          progress: 0,
+          status: "Starting video generation...",
+        });
+
+        // Start streaming from fal.ai
+        const stream = await falClient.stream(VIDEO_MODELS.textToVideo, {
+          input: {
+            prompt: input.prompt,
+            num_frames: Math.floor(input.duration * 24), // Convert seconds to frames at 24fps
+            num_inference_steps: 25,
+            guidance_scale: 7.5,
+            width: 576,
+            height: 320,
+            fps: 24,
+            motion_bucket_id: 127, // Higher values = more motion
+            seed: Math.floor(Math.random() * 2147483647),
+          },
+        });
+
+        let eventIndex = 0;
+
+        // Stream events as they come
+        for await (const event of stream) {
+          if (signal?.aborted) {
+            break;
+          }
+
+          const eventId = `${generationId}_${eventIndex++}`;
+
+          // Calculate progress percentage if available
+          const progress =
+            event.progress !== undefined
+              ? Math.floor(event.progress * 100)
+              : eventIndex * 5; // Fallback progress estimation
+
+          yield tracked(eventId, {
+            type: "progress",
+            progress,
+            status: event.status || "Generating video...",
+            data: event,
+          });
+        }
+
+        // Get the final result
+        const result = await stream.done();
+
+        // Check if we have a valid video URL
+        if (!result.video_url) {
+          yield tracked(`${generationId}_error`, {
+            type: "error",
+            error: "No video generated",
+          });
+          return;
+        }
+
+        // Send the final video
+        yield tracked(`${generationId}_complete`, {
+          type: "complete",
+          videoUrl: result.video_url,
+          duration: input.duration,
+        });
+      } catch (error) {
+        console.error("Error in text-to-video generation:", error);
+        yield tracked(`error_${Date.now()}`, {
+          type: "error",
+          error:
+            error instanceof Error ? error.message : "Failed to generate video",
+        });
+      }
+    }),
   removeBackground: publicProcedure
     .input(
       z.object({

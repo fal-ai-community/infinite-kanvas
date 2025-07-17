@@ -22,12 +22,19 @@ interface ImageTransform {
 
 interface CanvasElement {
   id: string;
-  type: "image" | "text" | "shape";
+  type: "image" | "text" | "shape" | "video";
   imageId?: string; // Reference to IndexedDB image
+  videoId?: string; // Reference to IndexedDB video
   transform: ImageTransform;
   zIndex: number;
   width?: number;
   height?: number;
+  // Video-specific properties
+  duration?: number;
+  currentTime?: number;
+  isPlaying?: boolean;
+  volume?: number;
+  muted?: boolean;
 }
 
 interface CanvasState {
@@ -41,11 +48,23 @@ interface CanvasState {
   };
 }
 
+interface CanvasVideo {
+  id: string;
+  originalDataUrl: string;
+  uploadedUrl?: string;
+  duration: number;
+  createdAt: number;
+}
+
 // IndexedDB schema
 interface CanvasDB extends DBSchema {
   images: {
     key: string;
     value: CanvasImage;
+  };
+  videos: {
+    key: string;
+    value: CanvasVideo;
   };
 }
 
@@ -57,10 +76,15 @@ class CanvasStorage {
   private readonly MAX_IMAGE_SIZE = 50 * 1024 * 1024; // 50MB max per image
 
   async init() {
-    this.db = await openDB<CanvasDB>(this.DB_NAME, this.DB_VERSION, {
-      upgrade(db: IDBPDatabase<CanvasDB>) {
+    this.db = await openDB<CanvasDB>(this.DB_NAME, this.DB_VERSION + 1, {
+      upgrade(db: IDBPDatabase<CanvasDB>, oldVersion) {
         if (!db.objectStoreNames.contains("images")) {
           db.createObjectStore("images", { keyPath: "id" });
+        }
+
+        // Add videos object store in version 2
+        if (oldVersion < 2 && !db.objectStoreNames.contains("videos")) {
+          db.createObjectStore("videos", { keyPath: "id" });
         }
       },
     });
@@ -101,6 +125,46 @@ class CanvasStorage {
     await this.db!.delete("images", id);
   }
 
+  // Save video to IndexedDB
+  async saveVideo(
+    videoDataUrl: string,
+    duration: number,
+    id?: string,
+  ): Promise<string> {
+    if (!this.db) await this.init();
+
+    // Check size
+    const sizeInBytes = new Blob([videoDataUrl]).size;
+    if (sizeInBytes > this.MAX_IMAGE_SIZE) {
+      throw new Error(
+        `Video size exceeds maximum allowed size of ${this.MAX_IMAGE_SIZE / 1024 / 1024}MB`,
+      );
+    }
+
+    const videoId = id || crypto.randomUUID();
+    const video: CanvasVideo = {
+      id: videoId,
+      originalDataUrl: videoDataUrl,
+      duration,
+      createdAt: Date.now(),
+    };
+
+    await this.db!.put("videos", video);
+    return videoId;
+  }
+
+  // Get video from IndexedDB
+  async getVideo(id: string): Promise<CanvasVideo | undefined> {
+    if (!this.db) await this.init();
+    return await this.db!.get("videos", id);
+  }
+
+  // Delete video from IndexedDB
+  async deleteVideo(id: string): Promise<void> {
+    if (!this.db) await this.init();
+    await this.db!.delete("videos", id);
+  }
+
   // Save canvas state to localStorage
   saveCanvasState(state: CanvasState): void {
     try {
@@ -130,12 +194,23 @@ class CanvasStorage {
     localStorage.removeItem(this.STATE_KEY);
     if (!this.db) await this.init();
 
-    const tx = this.db!.transaction("images", "readwrite");
-    await tx.objectStore("images").clear();
-    await tx.done;
+    // Clear images
+    const imageTx = this.db!.transaction("images", "readwrite");
+    await imageTx.objectStore("images").clear();
+    await imageTx.done;
+
+    // Clear videos
+    try {
+      const videoTx = this.db!.transaction("videos", "readwrite");
+      await videoTx.objectStore("videos").clear();
+      await videoTx.done;
+    } catch (e) {
+      // Handle case where videos store might not exist yet in older DB versions
+      console.warn("Could not clear videos store, it may not exist yet:", e);
+    }
   }
 
-  // Cleanup old/unused images
+  // Cleanup old/unused images and videos
   async cleanupOldData(): Promise<void> {
     if (!this.db) await this.init();
 
@@ -149,11 +224,26 @@ class CanvasStorage {
         .map((el) => el.imageId!),
     );
 
+    // Get all video IDs currently in use
+    const usedVideoIds = new Set(
+      state.elements
+        .filter((el) => el.type === "video" && el.videoId)
+        .map((el) => el.videoId!),
+    );
+
     // Delete unused images
     const allImages = await this.db!.getAll("images");
     for (const image of allImages) {
       if (!usedImageIds.has(image.id)) {
         await this.deleteImage(image.id);
+      }
+    }
+
+    // Delete unused videos
+    const allVideos = await this.db!.getAll("videos");
+    for (const video of allVideos) {
+      if (!usedVideoIds.has(video.id)) {
+        await this.deleteVideo(video.id);
       }
     }
   }
@@ -162,6 +252,7 @@ class CanvasStorage {
   async exportCanvasData(): Promise<{
     state: CanvasState;
     images: CanvasImage[];
+    videos: CanvasVideo[];
   }> {
     if (!this.db) await this.init();
 
@@ -169,13 +260,15 @@ class CanvasStorage {
     if (!state) throw new Error("No canvas state to export");
 
     const images = await this.db!.getAll("images");
-    return { state, images };
+    const videos = await this.db!.getAll("videos");
+    return { state, images, videos };
   }
 
   // Import canvas data
   async importCanvasData(data: {
     state: CanvasState;
     images: CanvasImage[];
+    videos?: CanvasVideo[]; // Optional for backward compatibility
   }): Promise<void> {
     if (!this.db) await this.init();
 
@@ -183,11 +276,20 @@ class CanvasStorage {
     await this.clearAll();
 
     // Import images
-    const tx = this.db!.transaction("images", "readwrite");
+    const imageTx = this.db!.transaction("images", "readwrite");
     for (const image of data.images) {
-      await tx.objectStore("images").put(image);
+      await imageTx.objectStore("images").put(image);
     }
-    await tx.done;
+    await imageTx.done;
+
+    // Import videos if they exist
+    if (data.videos && data.videos.length > 0) {
+      const videoTx = this.db!.transaction("videos", "readwrite");
+      for (const video of data.videos) {
+        await videoTx.objectStore("videos").put(video);
+      }
+      await videoTx.done;
+    }
 
     // Import state
     this.saveCanvasState(data.state);
@@ -195,4 +297,10 @@ class CanvasStorage {
 }
 
 export const canvasStorage = new CanvasStorage();
-export type { CanvasState, CanvasElement, ImageTransform, CanvasImage };
+export type {
+  CanvasState,
+  CanvasElement,
+  ImageTransform,
+  CanvasImage,
+  CanvasVideo,
+};
