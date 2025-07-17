@@ -14,7 +14,6 @@ export const DimensionDisplay: React.FC<DimensionDisplayProps> = ({
   if (selectedImages.length !== 1) return null;
 
   const image = selectedImages[0];
-  console.log(image.rotation);
 
   // Calculate the API dimensions (what gets sent to generation API)
   const getApiDimensions = async (img: PlacedImage) => {
