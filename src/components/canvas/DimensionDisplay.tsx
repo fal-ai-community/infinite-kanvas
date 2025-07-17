@@ -1,9 +1,10 @@
 import React from "react";
 import type { PlacedImage } from "@/types/canvas";
+import { canvasToScreen, type Viewport } from "@/utils/canvas-utils";
 
 interface DimensionDisplayProps {
   selectedImages: PlacedImage[];
-  viewport: { x: number; y: number; scale: number };
+  viewport: Viewport;
 }
 
 export const DimensionDisplay: React.FC<DimensionDisplayProps> = ({
@@ -65,18 +66,7 @@ export const DimensionDisplay: React.FC<DimensionDisplayProps> = ({
   const imageCenterX = image.x + image.width / 2;
   const imageBottomY = image.y + image.height;
 
-  const screenX = imageCenterX * viewport.scale + viewport.x;
-  const screenY = imageBottomY * viewport.scale + viewport.y;
-
-  // Check if the display would be visible on screen (client-side only)
-  const isVisible =
-    typeof window !== "undefined" &&
-    screenX > -100 &&
-    screenX < window.innerWidth + 100 &&
-    screenY > -50 &&
-    screenY < window.innerHeight + 50;
-
-  if (typeof window !== "undefined" && !isVisible) return null;
+  const { x: screenX, y: screenY } = canvasToScreen(imageCenterX, imageBottomY, viewport);
 
   return (
     <div

@@ -1,6 +1,12 @@
 import type { PlacedImage } from "@/types/canvas";
 import type { CanvasElement } from "@/lib/storage";
 
+export interface Viewport {
+  x: number;
+  y: number;
+  scale: number;
+}
+
 // Helper to convert PlacedImage to storage format
 export const imageToCanvasElement = (image: PlacedImage): CanvasElement => ({
   id: image.id,
@@ -24,3 +30,15 @@ export const imageToCanvasElement = (image: PlacedImage): CanvasElement => ({
   width: image.width,
   height: image.height,
 });
+
+// Convert canvas coordinates to screen coordinates
+export const canvasToScreen = (
+  canvasX: number,
+  canvasY: number,
+  viewport: Viewport
+): { x: number; y: number } => {
+  return {
+    x: canvasX * viewport.scale + viewport.x,
+    y: canvasY * viewport.scale + viewport.y,
+  };
+};
