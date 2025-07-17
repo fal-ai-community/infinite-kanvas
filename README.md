@@ -143,19 +143,23 @@ Uses Bria's specialized background removal model:
 
 4. Run development server: `npm run dev`
 
-### Git Hooks Setup (Optional)
+### Pre-commit Hooks
 
-To automatically format code before commits, install the pre-commit hook:
+The project uses [Husky](https://github.com/typicode/husky) and [lint-staged](https://github.com/lint-staged/lint-staged) for automated code formatting and linting before commits.
+
+Pre-commit hooks are automatically installed when you run `npm install` (via the `prepare` script).
+
+The hooks will:
+
+- Run Prettier formatting on staged files
+- Run ESLint with auto-fix on staged files
+- Only process files that are staged for commit (more efficient than processing all files)
+
+If you need to manually run the pre-commit checks:
 
 ```bash
-./scripts/setup-hooks.sh
+npx lint-staged
 ```
-
-This will:
-- Install a pre-commit hook that runs `npm run format:write`
-- Automatically format code with Prettier before each commit
-- Prevent commits if formatting fails
-- Stage formatted files automatically
 
 ### Tech Stack
 
