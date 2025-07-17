@@ -143,6 +143,20 @@ Uses Bria's specialized background removal model:
 
 4. Run development server: `npm run dev`
 
+### Git Hooks Setup (Optional)
+
+To automatically format code before commits, install the pre-commit hook:
+
+```bash
+./scripts/setup-hooks.sh
+```
+
+This will:
+- Install a pre-commit hook that runs `npm run format:write`
+- Automatically format code with Prettier before each commit
+- Prevent commits if formatting fails
+- Stage formatted files automatically
+
 ### Tech Stack
 
 - **Next.js 15**: React framework with App Router

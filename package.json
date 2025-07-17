@@ -9,6 +9,7 @@
     "lint": "next lint",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,mdx}\" --cache",
     "format:write": "prettier --write \"**/*.{ts,tsx,js,jsx,mdx}\" --cache",
+    "setup-hooks": "./scripts/setup-hooks.sh",
     "export": "next build && next export || next build && bun ./scripts/export-workaround.js"
   },
   "dependencies": {

@@ -1,0 +1,24 @@
+#!/bin/sh
+#
+# Pre-commit hook that runs npm run format:write
+#
+# This hook runs prettier to format code before committing
+# If formatting fails, the commit will be aborted
+
+echo "Running code formatting..."
+
+# Run prettier formatting
+npm run format:write
+
+# Check if prettier succeeded
+if [ $? -ne 0 ]; then
+    echo "❌ Code formatting failed. Please fix the issues before committing."
+    exit 1
+fi
+
+echo "✅ Code formatting completed successfully."
+
+# Add any formatted files back to the staging area
+git add .
+
+exit 0
