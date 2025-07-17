@@ -72,6 +72,7 @@ import {
   findEmptySpaceForImage,
   imageNeedsReset,
   checkImageOverlapOrProximity,
+  calculateBoundsFromCoordinates,
 } from "@/utils/canvas-utils";
 import { checkOS } from "@/utils/os-utils";
 
@@ -94,6 +95,9 @@ import {
   generateImage,
 } from "@/lib/handlers/generation-handler";
 import { handleRemoveBackground as handleRemoveBackgroundHandler } from "@/lib/handlers/background-handler";
+
+// Standard size for reset functionality
+const RESET_IMAGE_SIZE = 200;
 
 export default function OverlayPage() {
   const [images, setImages] = useState<PlacedImage[]>([]);
@@ -389,6 +393,30 @@ export default function OverlayPage() {
     saveToStorage,
     activeGenerations.size,
   ]);
+
+  // Simple zoom to selection function
+  const zoomToSelection = () => {
+    if (selectedIds.length === 0) return;
+
+    const selectionBounds = calculateSelectionBounds(images, selectedIds);
+    if (!selectionBounds) return;
+
+    // Calculate scale to fit selection with padding
+    const padding = 100;
+    const scaleX = (canvasSize.width - padding * 2) / selectionBounds.width;
+    const scaleY = (canvasSize.height - padding * 2) / selectionBounds.height;
+    const scale = Math.min(scaleX, scaleY, 2); // Allow up to 200% zoom
+
+    // Center the selection
+    const centerX = canvasSize.width / 2;
+    const centerY = canvasSize.height / 2;
+
+    setViewport({
+      x: centerX - selectionBounds.centerX * scale,
+      y: centerY - selectionBounds.centerY * scale,
+      scale: Math.max(0.1, Math.min(5, scale)),
+    });
+  };
 
   // Load default images only if no saved state
   useEffect(() => {
@@ -1635,7 +1663,7 @@ export default function OverlayPage() {
         });
       }
       // Reset selected images transformations
-      else if (e.key === "0" && (e.metaKey || e.ctrlKey) && !isInputElement) {
+      else if (e.key === "r" && (e.metaKey || e.ctrlKey) && !isInputElement) {
         e.preventDefault();
 
         if (selectedIds.length === 0) return;
@@ -1645,7 +1673,7 @@ export default function OverlayPage() {
           selectedIds.includes(img.id),
         );
         const imagesToReset = selectedImages.filter((img) =>
-          imageNeedsReset(img, images),
+          imageNeedsReset(img, images, 10, RESET_IMAGE_SIZE),
         );
 
         // If no images need resetting, do nothing
@@ -1653,99 +1681,134 @@ export default function OverlayPage() {
 
         saveToHistory();
 
-        setImages((prev) => {
-          // Create a map for new positions of images that need repositioning
-          const positionMap = new Map();
-          let repositionIndex = 0;
+        // CALCULATE NEW COORDINATES DIRECTLY
+        const positionMap = new Map();
+        const resetCoordinates: Array<{
+          x: number;
+          y: number;
+          width: number;
+          height: number;
+        }> = [];
+        let repositionIndex = 0;
 
-          // Process each selected image
-          selectedImages.forEach((img) => {
-            if (!imageNeedsReset(img, prev)) return;
+        // Process each selected image to determine new coordinates
+        selectedImages.forEach((img) => {
+          if (!imageNeedsReset(img, images, 10, RESET_IMAGE_SIZE)) return;
 
-            // Check if image needs repositioning (overlapping/too close)
-            const needsReposition = prev.some(
-              (otherImg) =>
-                otherImg.id !== img.id &&
-                checkImageOverlapOrProximity(img, otherImg),
+          // Calculate reset dimensions maintaining aspect ratio
+          const aspectRatio = img.width / img.height;
+          let resetWidth = RESET_IMAGE_SIZE;
+          let resetHeight = RESET_IMAGE_SIZE / aspectRatio;
+
+          if (resetHeight > RESET_IMAGE_SIZE) {
+            resetHeight = RESET_IMAGE_SIZE;
+            resetWidth = RESET_IMAGE_SIZE * aspectRatio;
+          }
+
+          // Check if image needs repositioning (overlapping/too close)
+          const needsReposition = images.some(
+            (otherImg) =>
+              otherImg.id !== img.id &&
+              checkImageOverlapOrProximity(img, otherImg),
+          );
+
+          if (needsReposition) {
+            const imageForSpaceFinding = {
+              ...img,
+              width: resetWidth,
+              height: resetHeight,
+            };
+            const newPosition = findEmptySpaceForImage(
+              imageForSpaceFinding,
+              images,
+              repositionIndex,
             );
+            positionMap.set(img.id, newPosition);
+            resetCoordinates.push({
+              x: newPosition.x,
+              y: newPosition.y,
+              width: resetWidth,
+              height: resetHeight,
+            });
+            repositionIndex++;
+          } else {
+            // Image keeps current position but gets reset dimensions
+            resetCoordinates.push({
+              x: img.x,
+              y: img.y,
+              width: resetWidth,
+              height: resetHeight,
+            });
+          }
+        });
 
-            if (needsReposition) {
-              const newPosition = findEmptySpaceForImage(
-                img,
-                prev,
-                repositionIndex,
-              );
-              positionMap.set(img.id, newPosition);
-              repositionIndex++;
-            }
+        // Calculate bounds of all reset images using their new coordinates
+        const resetBounds = calculateBoundsFromCoordinates(resetCoordinates);
+
+        // Pan to the reset images immediately using direct coordinate calculation
+        if (resetBounds) {
+          const padding = 100;
+          const scaleX = (canvasSize.width - padding * 2) / resetBounds.width;
+          const scaleY = (canvasSize.height - padding * 2) / resetBounds.height;
+          const scale = Math.min(scaleX, scaleY, 2); // Allow up to 200% zoom
+
+          const centerX = canvasSize.width / 2;
+          const centerY = canvasSize.height / 2;
+
+          setViewport({
+            x: centerX - resetBounds.centerX * scale,
+            y: centerY - resetBounds.centerY * scale,
+            scale: Math.max(0.1, Math.min(5, scale)),
           });
+        }
 
-          // Update images in place
+        // Update the images with the calculated coordinates
+        setImages((prev) => {
           return prev.map((img) => {
-            if (!selectedIds.includes(img.id) || !imageNeedsReset(img, prev)) {
+            if (
+              !selectedIds.includes(img.id) ||
+              !imageNeedsReset(img, prev, 10, RESET_IMAGE_SIZE)
+            ) {
               return img;
+            }
+
+            // Calculate reset dimensions maintaining aspect ratio
+            const aspectRatio = img.width / img.height;
+            let resetWidth = RESET_IMAGE_SIZE;
+            let resetHeight = RESET_IMAGE_SIZE / aspectRatio;
+
+            if (resetHeight > RESET_IMAGE_SIZE) {
+              resetHeight = RESET_IMAGE_SIZE;
+              resetWidth = RESET_IMAGE_SIZE * aspectRatio;
             }
 
             const newPos = positionMap.get(img.id);
             if (newPos) {
-              // Image needs both rotation reset and repositioning
+              // Image needs rotation reset, size reset, and repositioning
               return {
                 ...img,
                 x: newPos.x,
                 y: newPos.y,
                 rotation: 0,
+                width: resetWidth,
+                height: resetHeight,
               };
             } else {
-              // Image only needs rotation reset
+              // Image needs rotation and/or size reset but not repositioning
               return {
                 ...img,
                 rotation: 0,
+                width: resetWidth,
+                height: resetHeight,
               };
             }
           });
         });
-
-        // Force sync Stage position to prevent viewport jumping
-        if (stageRef.current) {
-          // Use setTimeout to ensure state update completes first
-          setTimeout(() => {
-            if (stageRef.current) {
-              // Ensure Stage position matches viewport state
-              stageRef.current.position({
-                x: viewport.x,
-                y: viewport.y,
-              });
-              stageRef.current.batchDraw();
-            }
-          }, 0);
-        }
       }
       // Zoom to selection (Ctrl/Cmd+F)
       else if (e.key === "f" && (e.metaKey || e.ctrlKey) && !isInputElement) {
         e.preventDefault();
-
-        if (selectedIds.length === 0) return;
-
-        // Calculate bounds of selected images
-        const selectionBounds = calculateSelectionBounds(images, selectedIds);
-        if (!selectionBounds) return;
-
-        // Calculate scale to fit selection with padding
-        const padding = 100;
-        const scaleX = (canvasSize.width - padding * 2) / selectionBounds.width;
-        const scaleY =
-          (canvasSize.height - padding * 2) / selectionBounds.height;
-        const scale = Math.min(scaleX, scaleY, 2); // Allow up to 200% zoom
-
-        // Center the selection
-        const centerX = canvasSize.width / 2;
-        const centerY = canvasSize.height / 2;
-
-        setViewport({
-          x: centerX - selectionBounds.centerX * scale,
-          y: centerY - selectionBounds.centerY * scale,
-          scale: Math.max(0.1, Math.min(5, scale)),
-        });
+        zoomToSelection();
       }
       // Spacebar for pan mode
       else if (e.key === " " && !isInputElement) {
@@ -2005,10 +2068,13 @@ export default function OverlayPage() {
                       {/* Render images */}
                       {images
                         .filter((image) => {
-                          // Performance optimization: only render visible images
-                          // Use larger buffer during panning to prevent images from disappearing
-                          const buffer =
-                            isPanningCanvas || isSpacebarHeld ? 1000 : 100; // pixels buffer
+                          // During panning, show ALL images to prevent disappearing
+                          if (isPanningCanvas || isSpacebarHeld) {
+                            return true;
+                          }
+
+                          // Performance optimization: only render visible images when not panning
+                          const buffer = 100; // pixels buffer
                           const viewBounds = {
                             left: -viewport.x / viewport.scale - buffer,
                             top: -viewport.y / viewport.scale - buffer,

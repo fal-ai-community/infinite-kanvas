@@ -225,14 +225,33 @@ export const checkImageOverlapOrProximity = (
   );
 };
 
-// Check if an image needs resetting (rotated or overlapping/too close to others)
+// Check if an image needs resetting (rotated, wrong size, or overlapping/too close to others)
 export const imageNeedsReset = (
   image: PlacedImage,
   allImages: PlacedImage[],
   minGap: number = 10,
+  resetSize: number = 200,
 ): boolean => {
   // Check if rotated
   if (image.rotation !== 0) {
+    return true;
+  }
+
+  // Check if size differs from reset size (with small tolerance for aspect ratio adjustments)
+  const aspectRatio = image.width / image.height;
+  let expectedWidth = resetSize;
+  let expectedHeight = resetSize / aspectRatio;
+
+  if (expectedHeight > resetSize) {
+    expectedHeight = resetSize;
+    expectedWidth = resetSize * aspectRatio;
+  }
+
+  const tolerance = 1; // Allow 1px difference due to rounding
+  if (
+    Math.abs(image.width - expectedWidth) > tolerance ||
+    Math.abs(image.height - expectedHeight) > tolerance
+  ) {
     return true;
   }
 
@@ -246,4 +265,32 @@ export const imageNeedsReset = (
   }
 
   return false;
+};
+
+// Calculate bounding box from an array of coordinates and dimensions
+export const calculateBoundsFromCoordinates = (
+  items: Array<{ x: number; y: number; width: number; height: number }>,
+) => {
+  if (items.length === 0) return null;
+
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+
+  items.forEach((item) => {
+    minX = Math.min(minX, item.x);
+    minY = Math.min(minY, item.y);
+    maxX = Math.max(maxX, item.x + item.width);
+    maxY = Math.max(maxY, item.y + item.height);
+  });
+
+  return {
+    x: minX,
+    y: minY,
+    width: maxX - minX,
+    height: maxY - minY,
+    centerX: (minX + maxX) / 2,
+    centerY: (minY + maxY) / 2,
+  };
 };
