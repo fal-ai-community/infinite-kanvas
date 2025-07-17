@@ -1,6 +1,6 @@
 import React from "react";
 import type { PlacedImage } from "@/types/canvas";
-import { canvasToScreen, type Viewport } from "@/utils/canvas-utils";
+import { canvasToScreen, calculateBoundingBox, type Viewport } from "@/utils/canvas-utils";
 
 interface DimensionDisplayProps {
   selectedImages: PlacedImage[];
@@ -62,11 +62,13 @@ export const DimensionDisplay: React.FC<DimensionDisplayProps> = ({
 
   if (!apiDimensions) return null;
 
-  // Convert image center-bottom position to screen coordinates
-  const imageCenterX = image.x + image.width / 2;
-  const imageBottomY = image.y + image.height;
-
-  const { x: screenX, y: screenY } = canvasToScreen(imageCenterX, imageBottomY, viewport);
+  // Get rotation-aware bottom center position using bounding box
+  const boundingBox = calculateBoundingBox(image);
+  const { x: screenX, y: screenY } = canvasToScreen(
+    boundingBox.x + boundingBox.width / 2,
+    boundingBox.y + boundingBox.height,
+    viewport
+  );
 
   return (
     <div
