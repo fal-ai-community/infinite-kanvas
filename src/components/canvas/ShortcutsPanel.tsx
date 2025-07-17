@@ -27,7 +27,7 @@ export const ShortcutsPanel: React.FC = () => {
     {
       icon: <RotateCcw className="h-3 w-3" />,
       keys: [modKey, "R"],
-      description: "Reset",
+      description: "Reset Image",
     },
   ];
 
