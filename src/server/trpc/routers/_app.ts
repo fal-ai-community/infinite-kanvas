@@ -34,7 +34,7 @@ async function getFalClient(apiKey: string | undefined, ctx: any) {
   const limiterResult = await shouldLimitRequest(limiter, ip);
   if (limiterResult.shouldLimitRequest) {
     throw new Error(
-      `Rate limit exceeded per ${limiterResult.period}. Add your FAL API key to bypass rate limits.`
+      `Rate limit exceeded per ${limiterResult.period}. Add your FAL API key to bypass rate limits.`,
     );
   }
 
@@ -56,7 +56,7 @@ export const appRouter = router({
       z.object({
         imageUrl: z.string().url(),
         apiKey: z.string().optional(),
-      })
+      }),
     )
     .mutation(async ({ input, ctx }) => {
       try {
@@ -69,7 +69,7 @@ export const appRouter = router({
               image_url: input.imageUrl,
               sync_mode: true,
             },
-          }
+          },
         );
 
         return {
@@ -78,7 +78,9 @@ export const appRouter = router({
       } catch (error) {
         console.error("Error removing background:", error);
         throw new Error(
-          error instanceof Error ? error.message : "Failed to remove background"
+          error instanceof Error
+            ? error.message
+            : "Failed to remove background",
         );
       }
     }),
@@ -89,7 +91,7 @@ export const appRouter = router({
         imageUrl: z.string().url(),
         textInput: z.string(),
         apiKey: z.string().optional(),
-      })
+      }),
     )
     .mutation(async ({ input, ctx }) => {
       try {
@@ -142,7 +144,7 @@ export const appRouter = router({
         ]);
 
         console.log(
-          `Original image: ${originalMetadata.width}x${originalMetadata.height}`
+          `Original image: ${originalMetadata.width}x${originalMetadata.height}`,
         );
         console.log(`Mask image: ${maskMetadata.width}x${maskMetadata.height}`);
 
@@ -155,7 +157,7 @@ export const appRouter = router({
           console.log("Resizing mask to match original image dimensions...");
           processedMask = maskImage.resize(
             originalMetadata.width,
-            originalMetadata.height
+            originalMetadata.height,
           );
         }
 
@@ -210,7 +212,7 @@ export const appRouter = router({
         // Upload the segmented image to FAL storage
         console.log("Uploading segmented image to storage...");
         const uploadResult = await falClient.storage.upload(
-          new Blob([segmentedImage], { type: "image/png" })
+          new Blob([segmentedImage], { type: "image/png" }),
         );
 
         // Return the URL of the segmented object
@@ -236,14 +238,14 @@ export const appRouter = router({
           error.message?.includes("not enterprise ready")
         ) {
           throw new Error(
-            "This model requires an enterprise FAL account. Please contact FAL support for access or use the 'Remove Background' feature instead."
+            "This model requires an enterprise FAL account. Please contact FAL support for access or use the 'Remove Background' feature instead.",
           );
         }
 
         // Check for other specific error types
         if (error.status === 403 || error.message?.includes("Forbidden")) {
           throw new Error(
-            "API access denied. Please check your FAL API key permissions."
+            "API access denied. Please check your FAL API key permissions.",
           );
         }
 
@@ -263,11 +265,11 @@ export const appRouter = router({
             "portrait_4_3",
             "square",
             "landscape_16_9",
-            "portrait_9_16",
+            "portrait_16_9",
           ])
           .optional(),
         apiKey: z.string().optional(),
-      })
+      }),
     )
     .mutation(async ({ input, ctx }) => {
       try {
@@ -289,23 +291,25 @@ export const appRouter = router({
               seed: input.seed,
               loras,
             },
-          }
+          },
         );
 
-        if (!result.data?.images?.[0]) {
+        // Handle different possible response structures
+        const resultData = (result as any).data || result;
+        if (!resultData.images?.[0]) {
           throw new Error("No image generated");
         }
 
         return {
-          url: result.data.images[0].url,
-          width: result.data.images[0].width,
-          height: result.data.images[0].height,
-          seed: result.data.seed,
+          url: resultData.images[0].url,
+          width: resultData.images[0].width,
+          height: resultData.images[0].height,
+          seed: resultData.seed,
         };
       } catch (error) {
         console.error("Error in text-to-image generation:", error);
         throw new Error(
-          error instanceof Error ? error.message : "Failed to generate image"
+          error instanceof Error ? error.message : "Failed to generate image",
         );
       }
     }),
@@ -319,7 +323,7 @@ export const appRouter = router({
         seed: z.number().optional(),
         lastEventId: z.string().optional(),
         apiKey: z.string().optional(),
-      })
+      }),
     )
     .subscription(async function* ({ input, signal, ctx }) {
       try {
@@ -365,7 +369,8 @@ export const appRouter = router({
         const result = await stream.done();
 
         // Handle different possible response structures
-        const images = result.data?.images || result.images || [];
+        const resultData = (result as any).data || result;
+        const images = resultData.images || [];
         if (!images?.[0]) {
           yield tracked(`${generationId}_error`, {
             type: "error",
@@ -378,7 +383,7 @@ export const appRouter = router({
         yield tracked(`${generationId}_complete`, {
           type: "complete",
           imageUrl: images[0].url,
-          seed: result.data?.seed || result.seed,
+          seed: resultData.seed,
         });
       } catch (error) {
         console.error("Error in image generation stream:", error);
