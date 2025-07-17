@@ -1773,10 +1773,10 @@ export default function OverlayPage() {
                     scaleY={viewport.scale}
                     draggable={false}
                     onDragStart={(e) => {
-                      e.evt.preventDefault();
+                      e.evt?.preventDefault();
                     }}
                     onDragEnd={(e) => {
-                      e.evt.preventDefault();
+                      e.evt?.preventDefault();
                     }}
                     onMouseDown={handleMouseDown}
                     onMousemove={handleMouseMove}
