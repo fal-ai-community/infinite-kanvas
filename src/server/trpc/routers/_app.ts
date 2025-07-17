@@ -21,9 +21,9 @@ async function getFalClient(apiKey: string | undefined, ctx: any) {
   const { createRateLimiter } = await import("@/lib/ratelimit");
 
   const limiter = {
-    perMinute: createRateLimiter(30, "60 s"),
-    perHour: createRateLimiter(120, "60 m"),
-    perDay: createRateLimiter(300, "24 h"),
+    perMinute: createRateLimiter(50, "60 s"),
+    perHour: createRateLimiter(250, "60 m"),
+    perDay: createRateLimiter(500, "24 h"),
   };
 
   const ip =

@@ -3,7 +3,6 @@ import { Image as KonvaImage, Transformer } from "react-konva";
 import Konva from "konva";
 import useImage from "use-image";
 import { useStreamingImage } from "@/hooks/useStreamingImage";
-import { LoadingPlaceholder } from "./LoadingPlaceholder";
 import type { PlacedImage } from "@/types/canvas";
 
 interface CanvasImageProps {
@@ -39,23 +38,13 @@ export const CanvasImage: React.FC<CanvasImageProps> = ({
 }) => {
   const shapeRef = useRef<Konva.Image>(null);
   const trRef = useRef<Konva.Transformer>(null);
+  const dragMoveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   // Use streaming image hook for generated images to prevent flicker
-  const [streamingImg, isStreamingLoading] = useStreamingImage(
-    image.isGenerated ? image.src : "",
-  );
-  const [normalImg, normalImgStatus] = useImage(
-    image.isGenerated ? "" : image.src,
-    "anonymous",
-  );
+  const [streamingImg] = useStreamingImage(image.isGenerated ? image.src : "");
+  const [normalImg] = useImage(image.isGenerated ? "" : image.src, "anonymous");
   const img = image.isGenerated ? streamingImg : normalImg;
-  const isImageLoading = image.isGenerated
-    ? isStreamingLoading
-    : normalImgStatus === "loading";
   const [isHovered, setIsHovered] = useState(false);
   const [isDraggable, setIsDraggable] = useState(true);
-
-  // Show loading placeholder if image is loading or has loading state
-  const showLoadingPlaceholder = image.isLoading || isImageLoading || !img;
 
   useEffect(() => {
     if (isSelected && trRef.current && shapeRef.current) {
@@ -69,138 +58,166 @@ export const CanvasImage: React.FC<CanvasImageProps> = ({
     }
   }, [isSelected, selectedIds.length]);
 
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (dragMoveTimeoutRef.current) {
+        clearTimeout(dragMoveTimeoutRef.current);
+      }
+    };
+  }, []);
+
   return (
     <>
-      {showLoadingPlaceholder ? (
-        <LoadingPlaceholder
-          x={image.x}
-          y={image.y}
-          width={image.width}
-          height={image.height}
-          message={
-            image.loadingMessage ||
-            (image.isGenerated ? "Generating..." : "Loading...")
+      <KonvaImage
+        ref={shapeRef}
+        id={image.id}
+        image={img}
+        x={image.x}
+        y={image.y}
+        width={image.width}
+        height={image.height}
+        rotation={image.rotation}
+        crop={
+          image.cropX !== undefined && !isCroppingImage
+            ? {
+                x: (image.cropX || 0) * (img?.naturalWidth || 0),
+                y: (image.cropY || 0) * (img?.naturalHeight || 0),
+                width: (image.cropWidth || 1) * (img?.naturalWidth || 0),
+                height: (image.cropHeight || 1) * (img?.naturalHeight || 0),
+              }
+            : undefined
+        }
+        draggable={isDraggable}
+        onClick={onSelect}
+        onTap={onSelect}
+        onDblClick={onDoubleClick}
+        onDblTap={onDoubleClick}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+        onMouseDown={(e) => {
+          // Only allow dragging with left mouse button (0)
+          // Middle mouse (1) and right mouse (2) should not drag images
+          const isLeftButton = e.evt.button === 0;
+          setIsDraggable(isLeftButton);
+
+          // For middle mouse button, don't stop propagation
+          // Let it bubble up to the stage for canvas panning
+          if (e.evt.button === 1) {
+            return;
           }
-          opacity={0.8}
-        />
-      ) : (
-        <KonvaImage
-          ref={shapeRef}
-          image={img}
-          x={image.x}
-          y={image.y}
-          width={image.width}
-          height={image.height}
-          rotation={image.rotation}
-          crop={
-            image.cropX !== undefined && !isCroppingImage
-              ? {
-                  x: (image.cropX || 0) * (img?.naturalWidth || 0),
-                  y: (image.cropY || 0) * (img?.naturalHeight || 0),
-                  width: (image.cropWidth || 1) * (img?.naturalWidth || 0),
-                  height: (image.cropHeight || 1) * (img?.naturalHeight || 0),
-                }
-              : undefined
+        }}
+        onMouseUp={() => {
+          // Re-enable dragging after mouse up
+          setIsDraggable(true);
+        }}
+        onDragStart={(e) => {
+          // Stop propagation to prevent stage from being dragged
+          e.cancelBubble = true;
+          // Auto-select on drag if not already selected
+          if (!isSelected) {
+            onSelect(e);
           }
-          draggable={isDraggable}
-          onClick={onSelect}
-          onTap={onSelect}
-          onDblClick={onDoubleClick}
-          onDblTap={onDoubleClick}
-          onMouseEnter={() => setIsHovered(true)}
-          onMouseLeave={() => setIsHovered(false)}
-          onMouseDown={(e) => {
-            // Only allow dragging with left mouse button (0)
-            // Middle mouse (1) and right mouse (2) should not drag images
-            const isLeftButton = e.evt.button === 0;
-            setIsDraggable(isLeftButton);
+          onDragStart();
+        }}
+        onDragMove={(e) => {
+          // Don't update state during drag - let Konva handle the visual positioning
+          // This prevents unnecessary re-renders while dragging
+          const node = e.target;
 
-            // For middle mouse button, don't stop propagation
-            // Let it bubble up to the stage for canvas panning
-            if (e.evt.button === 1) {
-              return;
-            }
-          }}
-          onMouseUp={() => {
-            // Re-enable dragging after mouse up
-            setIsDraggable(true);
-          }}
-          onDragStart={(e) => {
-            // Stop propagation to prevent stage from being dragged
-            e.cancelBubble = true;
-            // Auto-select on drag if not already selected
-            if (!isSelected) {
-              onSelect(e);
-            }
-            onDragStart();
-          }}
-          onDragMove={(e) => {
-            const node = e.target;
+          if (selectedIds.includes(image.id) && selectedIds.length > 1) {
+            // For multi-selection, update other selected items' visual positions
+            const startPos = dragStartPositions.get(image.id);
+            if (startPos) {
+              const deltaX = node.x() - startPos.x;
+              const deltaY = node.y() - startPos.y;
 
-            if (selectedIds.includes(image.id) && selectedIds.length > 1) {
-              // Calculate delta from drag start position
-              const startPos = dragStartPositions.get(image.id);
-              if (startPos) {
-                const deltaX = node.x() - startPos.x;
-                const deltaY = node.y() - startPos.y;
-
-                // Update all selected items relative to their start positions
-                setImages((prev) =>
-                  prev.map((img) => {
-                    if (img.id === image.id) {
-                      return { ...img, x: node.x(), y: node.y() };
-                    } else if (selectedIds.includes(img.id)) {
-                      const imgStartPos = dragStartPositions.get(img.id);
-                      if (imgStartPos) {
-                        return {
-                          ...img,
-                          x: imgStartPos.x + deltaX,
-                          y: imgStartPos.y + deltaY,
-                        };
+              // Update visual positions of other selected items without state changes
+              const stage = node.getStage();
+              if (stage) {
+                selectedIds.forEach((id) => {
+                  if (id !== image.id) {
+                    const otherStartPos = dragStartPositions.get(id);
+                    if (otherStartPos) {
+                      const otherNode = stage.findOne(`#${id}`);
+                      if (otherNode && typeof otherNode.x === "function") {
+                        otherNode.x(otherStartPos.x + deltaX);
+                        otherNode.y(otherStartPos.y + deltaY);
                       }
                     }
-                    return img;
-                  }),
-                );
+                  }
+                });
               }
-            } else {
-              // Single item drag - just update this image
-              onChange({
-                x: node.x(),
-                y: node.y(),
-              });
             }
-          }}
-          onDragEnd={(e) => {
-            onDragEnd();
-          }}
-          onTransformEnd={(e) => {
-            const node = shapeRef.current;
-            if (node) {
-              const scaleX = node.scaleX();
-              const scaleY = node.scaleY();
-
-              node.scaleX(1);
-              node.scaleY(1);
-
-              onChange({
-                x: node.x(),
-                y: node.y(),
-                width: Math.max(5, node.width() * scaleX),
-                height: Math.max(5, node.height() * scaleY),
-                rotation: node.rotation(),
-              });
-            }
-            onDragEnd();
-          }}
-          opacity={image.isGenerated ? 0.9 : 1}
-          stroke={
-            isSelected ? "#3b82f6" : isHovered ? "#3b82f6" : "transparent"
           }
-          strokeWidth={isSelected || isHovered ? 2 : 0}
-        />
-      )}
-      {isSelected && selectedIds.length === 1 && !showLoadingPlaceholder && (
+          // For single item drag, Konva handles the visual positioning automatically
+        }}
+        onDragEnd={(e) => {
+          // Update state only once when drag ends
+          const node = e.target;
+
+          if (selectedIds.includes(image.id) && selectedIds.length > 1) {
+            // Multi-selection: update all selected items' positions in state
+            const startPos = dragStartPositions.get(image.id);
+            if (startPos) {
+              const deltaX = node.x() - startPos.x;
+              const deltaY = node.y() - startPos.y;
+
+              setImages((prev) =>
+                prev.map((img) => {
+                  if (img.id === image.id) {
+                    return { ...img, x: node.x(), y: node.y() };
+                  } else if (selectedIds.includes(img.id)) {
+                    const imgStartPos = dragStartPositions.get(img.id);
+                    if (imgStartPos) {
+                      return {
+                        ...img,
+                        x: imgStartPos.x + deltaX,
+                        y: imgStartPos.y + deltaY,
+                      };
+                    }
+                  }
+                  return img;
+                }),
+              );
+            }
+          } else {
+            // Single item: update only this image's position in the images array
+            setImages((prev) =>
+              prev.map((img) =>
+                img.id === image.id
+                  ? { ...img, x: node.x(), y: node.y() }
+                  : img,
+              ),
+            );
+          }
+
+          onDragEnd();
+        }}
+        onTransformEnd={(e) => {
+          const node = shapeRef.current;
+          if (node) {
+            const scaleX = node.scaleX();
+            const scaleY = node.scaleY();
+
+            node.scaleX(1);
+            node.scaleY(1);
+
+            onChange({
+              x: node.x(),
+              y: node.y(),
+              width: Math.max(5, node.width() * scaleX),
+              height: Math.max(5, node.height() * scaleY),
+              rotation: node.rotation(),
+            });
+          }
+          onDragEnd();
+        }}
+        opacity={image.isGenerated ? 0.9 : 1}
+        stroke={isSelected ? "#3b82f6" : isHovered ? "#3b82f6" : "transparent"}
+        strokeWidth={isSelected || isHovered ? 2 : 0}
+      />
+      {isSelected && selectedIds.length === 1 && (
         <Transformer
           ref={trRef}
           boundBoxFunc={(oldBox, newBox) => {
