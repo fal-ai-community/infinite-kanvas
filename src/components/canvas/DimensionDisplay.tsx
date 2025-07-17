@@ -20,7 +20,14 @@ export const DimensionDisplay: React.FC<DimensionDisplayProps> = ({
 
   const image = selectedImages[0];
 
-  // Calculate the API dimensions (what gets sent to generation API)
+  /**
+   * Calculate the natural (API) dimensions that get sent to generation endpoints.
+   * We show these instead of display dimensions because:
+   * - They represent the actual pixel data AI models process
+   * - They account for crops (cropWidth × naturalWidth)
+   * - They're consistent regardless of canvas zoom/scaling
+   * - Users need to know the true resolution for generation quality
+   */
   const getApiDimensions = async (img: PlacedImage) => {
     try {
       // Load the image to get natural dimensions
