@@ -61,6 +61,7 @@ export const CanvasImage: React.FC<CanvasImageProps> = ({
     <>
       <KonvaImage
         ref={shapeRef}
+        id={image.id}
         image={img}
         x={image.x}
         y={image.y}
@@ -139,7 +140,6 @@ export const CanvasImage: React.FC<CanvasImageProps> = ({
               );
             }
           } else {
-            // Single item drag - just update this image
             onChange({
               x: node.x(),
               y: node.y(),
