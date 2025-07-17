@@ -1922,6 +1922,7 @@ export default function OverlayPage() {
                           return (
                             <CropOverlayWrapper
                               image={croppingImage}
+                              viewportScale={viewport.scale}
                               onCropChange={(crop) => {
                                 setImages((prev) =>
                                   prev.map((img) =>
