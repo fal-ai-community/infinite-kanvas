@@ -143,6 +143,24 @@ Uses Bria's specialized background removal model:
 
 4. Run development server: `npm run dev`
 
+### Pre-commit Hooks
+
+The project uses [Husky](https://github.com/typicode/husky) and [lint-staged](https://github.com/lint-staged/lint-staged) for automated code formatting and linting before commits.
+
+Pre-commit hooks are automatically installed when you run `npm install` (via the `prepare` script).
+
+The hooks will:
+
+- Run Prettier formatting on staged files
+- Run ESLint with auto-fix on staged files
+- Only process files that are staged for commit (more efficient than processing all files)
+
+If you need to manually run the pre-commit checks:
+
+```bash
+npx lint-staged
+```
+
 ### Tech Stack
 
 - **Next.js 15**: React framework with App Router
