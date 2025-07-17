@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useRef, useState } from "react";
 import type { PlacedImage } from "@/types/canvas";
 
 interface MiniMapProps {
@@ -12,13 +12,21 @@ interface MiniMapProps {
     width: number;
     height: number;
   };
+  onViewportChange?: (viewport: {
+    x: number;
+    y: number;
+    scale: number;
+  }) => void;
 }
 
 export const MiniMap: React.FC<MiniMapProps> = ({
   images,
   viewport,
   canvasSize,
+  onViewportChange,
 }) => {
+  const minimapRef = useRef<HTMLDivElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
   // Calculate bounds of all content
   let minX = Infinity,
     minY = Infinity;
@@ -46,9 +54,63 @@ export const MiniMap: React.FC<MiniMapProps> = ({
   const offsetX = (miniMapWidth - contentWidth * scale) / 2;
   const offsetY = (miniMapHeight - contentHeight * scale) / 2;
 
+  // Handle click/drag to move viewport
+  const handleMinimapClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!onViewportChange || !minimapRef.current) return;
+
+    const rect = minimapRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    // Convert minimap coordinates to canvas coordinates
+    const canvasX =
+      ((x - offsetX) / scale + minX) * viewport.scale - canvasSize.width / 2;
+    const canvasY =
+      ((y - offsetY) / scale + minY) * viewport.scale - canvasSize.height / 2;
+
+    onViewportChange({
+      ...viewport,
+      x: -canvasX,
+      y: -canvasY,
+    });
+  };
+
+  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(true);
+    handleMinimapClick(e);
+  };
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (isDragging) {
+      handleMinimapClick(e);
+    }
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  // Add global mouse up listener to handle mouse up outside minimap
+  React.useEffect(() => {
+    if (isDragging) {
+      const handleGlobalMouseUp = () => setIsDragging(false);
+      window.addEventListener("mouseup", handleGlobalMouseUp);
+      return () => window.removeEventListener("mouseup", handleGlobalMouseUp);
+    }
+  }, [isDragging]);
+
   return (
     <div className="absolute top-4 right-2 md:right-4 z-20 bg-background/95 border rounded shadow-sm p-1 md:p-2">
-      <div className="relative w-32 h-24 md:w-48 md:h-32 bg-muted rounded overflow-hidden">
+      <div
+        ref={minimapRef}
+        className="relative w-32 h-24 md:w-48 md:h-32 bg-muted rounded overflow-hidden cursor-pointer"
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+        style={{ cursor: isDragging ? "grabbing" : "grab" }}
+      >
         {/* Render tiny versions of images */}
         {images.map((img) => (
           <div

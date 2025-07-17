@@ -125,7 +125,7 @@ export default function OverlayPage() {
   });
   const [isCanvasReady, setIsCanvasReady] = useState(false);
   const [isPanningCanvas, setIsPanningCanvas] = useState(false);
-  const [lastPanPosition, setLastPanPosition] = useState({ x: 0, y: 0 });
+  const [isSpacebarHeld, setIsSpacebarHeld] = useState(false);
   const [croppingImageId, setCroppingImageId] = useState<string | null>(null);
   const [viewport, setViewport] = useState({
     x: 0,
@@ -860,11 +860,17 @@ export default function OverlayPage() {
     const stage = e.target.getStage();
     const mouseButton = e.evt.button; // 0 = left, 1 = middle, 2 = right
 
-    // If middle mouse button, start panning
+    // If spacebar is held and left mouse button, let Konva handle panning
+    if (isSpacebarHeld && mouseButton === 0) {
+      // Don't prevent default - let Konva handle the drag
+      setIsPanningCanvas(true);
+      return;
+    }
+
+    // If middle mouse button, enable panning mode
     if (mouseButton === 1) {
       e.evt.preventDefault();
       setIsPanningCanvas(true);
-      setLastPanPosition({ x: e.evt.clientX, y: e.evt.clientY });
       return;
     }
 
@@ -907,18 +913,8 @@ export default function OverlayPage() {
   const handleMouseMove = (e: any) => {
     const stage = e.target.getStage();
 
-    // Handle canvas panning with middle mouse
+    // Skip manual panning - Konva handles it now
     if (isPanningCanvas) {
-      const deltaX = e.evt.clientX - lastPanPosition.x;
-      const deltaY = e.evt.clientY - lastPanPosition.y;
-
-      setViewport((prev) => ({
-        ...prev,
-        x: prev.x + deltaX,
-        y: prev.y + deltaY,
-      }));
-
-      setLastPanPosition({ x: e.evt.clientX, y: e.evt.clientY });
       return;
     }
 
@@ -945,6 +941,7 @@ export default function OverlayPage() {
     // Stop canvas panning
     if (isPanningCanvas) {
       setIsPanningCanvas(false);
+      // Viewport update is handled by Stage's onDragEnd
       return;
     }
 
@@ -1635,10 +1632,46 @@ export default function OverlayPage() {
         e.preventDefault();
         setViewport({ x: 0, y: 0, scale: 1 });
       }
+      // Spacebar for pan mode
+      else if (e.key === " " && !isInputElement) {
+        e.preventDefault();
+        setIsSpacebarHeld(true);
+      }
+      // Arrow keys for panning
+      else if (
+        !isInputElement &&
+        ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)
+      ) {
+        e.preventDefault();
+        const panStep = e.shiftKey ? 100 : 30; // Larger steps with shift
+
+        switch (e.key) {
+          case "ArrowUp":
+            setViewport((prev) => ({ ...prev, y: prev.y + panStep }));
+            break;
+          case "ArrowDown":
+            setViewport((prev) => ({ ...prev, y: prev.y - panStep }));
+            break;
+          case "ArrowLeft":
+            setViewport((prev) => ({ ...prev, x: prev.x + panStep }));
+            break;
+          case "ArrowRight":
+            setViewport((prev) => ({ ...prev, x: prev.x - panStep }));
+            break;
+        }
+      }
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
-      // Currently no key up handlers needed
+      // Release spacebar
+      if (e.key === " ") {
+        e.preventDefault();
+        setIsSpacebarHeld(false);
+        // Stop panning if currently panning
+        if (isPanningCanvas) {
+          setIsPanningCanvas(false);
+        }
+      }
     };
 
     window.addEventListener("keydown", handleKeyDown);
@@ -1663,6 +1696,7 @@ export default function OverlayPage() {
     sendToBack,
     bringForward,
     sendBackward,
+    isPanningCanvas,
   ]);
 
   return (
@@ -1758,7 +1792,11 @@ export default function OverlayPage() {
                 style={{
                   minHeight: `${canvasSize.height}px`,
                   minWidth: `${canvasSize.width}px`,
-                  cursor: isPanningCanvas ? "grabbing" : "default",
+                  cursor: isPanningCanvas
+                    ? "grabbing"
+                    : isSpacebarHeld
+                      ? "grab"
+                      : "default",
                   touchAction: "none", // Allow override for specific elements
                 }}
               >
@@ -1771,12 +1809,26 @@ export default function OverlayPage() {
                     y={viewport.y}
                     scaleX={viewport.scale}
                     scaleY={viewport.scale}
-                    draggable={false}
+                    draggable={isPanningCanvas || isSpacebarHeld}
                     onDragStart={(e) => {
-                      e.evt?.preventDefault();
+                      // Only allow dragging when in pan mode
+                      if (!isPanningCanvas && !isSpacebarHeld) {
+                        e.evt.preventDefault();
+                      }
+                    }}
+                    onDragMove={() => {
+                      // Optional: Update minimap position during drag
+                      // This is lightweight and won't cause performance issues
                     }}
                     onDragEnd={(e) => {
-                      e.evt?.preventDefault();
+                      // Update viewport state when drag ends
+                      const stage = e.target;
+                      setViewport({
+                        x: stage.x(),
+                        y: stage.y(),
+                        scale: viewport.scale,
+                      });
+                      setIsPanningCanvas(false);
                     }}
                     onMouseDown={handleMouseDown}
                     onMousemove={handleMouseMove}
@@ -2060,6 +2112,26 @@ export default function OverlayPage() {
                       Generating {activeGenerations.size} image
                       {activeGenerations.size > 1 ? "s" : ""}
                     </span>
+                  </div>
+                )}
+
+                {/* Pan mode indicator */}
+                {isSpacebarHeld && (
+                  <div className="absolute -top-12 left-1/2 transform -translate-x-1/2 bg-blue-500/10 border border-blue-500/20 text-blue-500 px-3 py-1 rounded text-sm font-medium flex items-center gap-2 animate-in fade-in-0 zoom-in-95 duration-200">
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M13 10V3L4 14h7v7l9-11h-7z"
+                      />
+                    </svg>
+                    <span>Pan Mode - Drag to move canvas</span>
                   </div>
                 )}
 
@@ -2428,6 +2500,7 @@ export default function OverlayPage() {
             images={images}
             viewport={viewport}
             canvasSize={canvasSize}
+            onViewportChange={setViewport}
           />
 
           {/* {isSaving && (
