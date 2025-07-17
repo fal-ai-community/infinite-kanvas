@@ -187,8 +187,8 @@ export const CanvasImage: React.FC<CanvasImageProps> = ({
               prev.map((img) =>
                 img.id === image.id
                   ? { ...img, x: node.x(), y: node.y() }
-                  : img
-              )
+                  : img,
+              ),
             );
           }
 
