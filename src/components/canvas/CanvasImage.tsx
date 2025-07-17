@@ -3,6 +3,7 @@ import { Image as KonvaImage, Transformer } from "react-konva";
 import Konva from "konva";
 import useImage from "use-image";
 import { useStreamingImage } from "@/hooks/useStreamingImage";
+import { LoadingPlaceholder } from "./LoadingPlaceholder";
 import type { PlacedImage } from "@/types/canvas";
 
 interface CanvasImageProps {
@@ -39,9 +40,15 @@ export const CanvasImage: React.FC<CanvasImageProps> = ({
   const shapeRef = useRef<Konva.Image>(null);
   const trRef = useRef<Konva.Transformer>(null);
   // Use streaming image hook for generated images to prevent flicker
-  const [streamingImg] = useStreamingImage(image.isGenerated ? image.src : "");
-  const [normalImg] = useImage(image.isGenerated ? "" : image.src, "anonymous");
+  const [streamingImg, isStreamingLoading] = useStreamingImage(
+    image.isGenerated ? image.src : "",
+  );
+  const [normalImg, isNormalLoading] = useImage(
+    image.isGenerated ? "" : image.src,
+    "anonymous",
+  );
   const img = image.isGenerated ? streamingImg : normalImg;
+  const isLoading = image.isGenerated ? isStreamingLoading : isNormalLoading;
   const [isHovered, setIsHovered] = useState(false);
   const [isDraggable, setIsDraggable] = useState(true);
 
@@ -59,6 +66,14 @@ export const CanvasImage: React.FC<CanvasImageProps> = ({
 
   return (
     <>
+      {isLoading && image.isGenerated && (
+        <LoadingPlaceholder
+          x={image.x}
+          y={image.y}
+          width={image.width}
+          height={image.height}
+        />
+      )}
       <KonvaImage
         ref={shapeRef}
         id={image.id}
@@ -136,7 +151,7 @@ export const CanvasImage: React.FC<CanvasImageProps> = ({
                     }
                   }
                   return img;
-                })
+                }),
               );
             }
           } else {
@@ -168,7 +183,7 @@ export const CanvasImage: React.FC<CanvasImageProps> = ({
           }
           onDragEnd();
         }}
-        opacity={image.isGenerated ? 0.9 : 1}
+        opacity={isLoading && image.isGenerated ? 0.5 : 1}
         stroke={isSelected ? "#3b82f6" : isHovered ? "#3b82f6" : "transparent"}
         strokeWidth={isSelected || isHovered ? 2 : 0}
       />
