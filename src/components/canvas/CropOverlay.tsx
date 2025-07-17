@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from "react";
+import React, { useRef, useState, useEffect } from 'react';
 import {
   Rect,
   Group,
@@ -6,9 +6,9 @@ import {
   Line,
   Image as KonvaImage,
   Transformer,
-} from "react-konva";
-import Konva from "konva";
-import type { PlacedImage } from "@/types/canvas";
+} from 'react-konva';
+import Konva from 'konva';
+import type { PlacedImage } from '@/types/canvas';
 
 interface CropOverlayProps {
   image: PlacedImage;
@@ -208,14 +208,14 @@ export const CropOverlay: React.FC<CropOverlayProps> = ({
           return newBox;
         }}
         enabledAnchors={[
-          "top-left",
-          "top-center",
-          "top-right",
-          "middle-left",
-          "middle-right",
-          "bottom-left",
-          "bottom-center",
-          "bottom-right",
+          'top-left',
+          'top-center',
+          'top-right',
+          'middle-left',
+          'middle-right',
+          'bottom-left',
+          'bottom-center',
+          'bottom-right',
         ]}
         rotateEnabled={false}
         flipEnabled={false}
@@ -233,7 +233,7 @@ export const CropOverlay: React.FC<CropOverlayProps> = ({
         <Rect
           width={70}
           height={36}
-          fill={isHoveringDone ? "#2563eb" : "#3b82f6"}
+          fill={isHoveringDone ? '#8b5cf6' : '#a855f7'}
           cornerRadius={6}
           shadowColor="black"
           shadowBlur={8}
