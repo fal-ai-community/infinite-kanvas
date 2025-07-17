@@ -43,7 +43,7 @@ export const POST = async (req: NextRequest) => {
                   : "100",
             "X-RateLimit-Period": limiterResult.period,
           },
-        }
+        },
       );
     }
   }
