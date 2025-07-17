@@ -2701,6 +2701,7 @@ export default function OverlayPage() {
             viewport={viewport}
             setViewport={setViewport}
             canvasSize={canvasSize}
+            images={images}
           />
 
           {/* Dimension display for selected images */}

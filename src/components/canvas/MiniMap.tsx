@@ -1,5 +1,4 @@
 import React, { useRef, useState } from "react";
-import { Target } from "lucide-react";
 import type { PlacedImage } from "@/types/canvas";
 
 interface MiniMapProps {
@@ -126,34 +125,6 @@ export const MiniMap: React.FC<MiniMapProps> = ({
     setIsDragging(false);
   };
 
-  // Return to content functionality - pan only, no zoom change
-  const handleReturnToContent = () => {
-    if (!onViewportChange || images.length === 0) return;
-
-    // Calculate bounds of all images (content area)
-    let minX = Infinity,
-      minY = Infinity;
-    let maxX = -Infinity,
-      maxY = -Infinity;
-
-    images.forEach((img) => {
-      minX = Math.min(minX, img.x);
-      minY = Math.min(minY, img.y);
-      maxX = Math.max(maxX, img.x + img.width);
-      maxY = Math.max(maxY, img.y + img.height);
-    });
-
-    const centerX = (minX + maxX) / 2;
-    const centerY = (minY + maxY) / 2;
-
-    // Center content on screen at current zoom level (no zoom change)
-    onViewportChange({
-      x: canvasSize.width / 2 - centerX * viewport.scale,
-      y: canvasSize.height / 2 - centerY * viewport.scale,
-      scale: viewport.scale, // Keep current zoom level
-    });
-  };
-
   // Add global mouse up listener to handle mouse up outside minimap
   React.useEffect(() => {
     if (isDragging) {
@@ -217,26 +188,7 @@ export const MiniMap: React.FC<MiniMapProps> = ({
           />
         )}
       </div>
-      <div className="flex items-center justify-between mt-1">
-        <p className="text-xs text-muted-foreground">Mini-map</p>
-        {images.length > 0 && (
-          <button
-            onClick={handleReturnToContent}
-            className={`p-1 text-xs rounded transition-colors ${
-              isFarFromContent
-                ? "text-orange-600 hover:text-orange-700 hover:bg-orange-100 bg-orange-50"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-            }`}
-            title={
-              isFarFromContent
-                ? "You're far from content - click to return"
-                : "Return to content"
-            }
-          >
-            <Target className="h-3 w-3" />
-          </button>
-        )}
-      </div>
+      <p className="text-xs text-muted-foreground mt-1 text-center">Mini-map</p>
     </div>
   );
 };

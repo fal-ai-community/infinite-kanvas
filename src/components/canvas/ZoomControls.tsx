@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { ZoomIn, ZoomOut, Maximize2 } from "lucide-react";
 import Link from "next/link";
 import { LogoIcon } from "@/components/icons/logo";
+import type { PlacedImage } from "@/types/canvas";
 
 interface ZoomControlsProps {
   viewport: {
@@ -15,12 +16,14 @@ interface ZoomControlsProps {
     width: number;
     height: number;
   };
+  images: PlacedImage[];
 }
 
 export const ZoomControls: React.FC<ZoomControlsProps> = ({
   viewport,
   setViewport,
   canvasSize,
+  images,
 }) => {
   const handleZoomIn = () => {
     const newScale = Math.min(5, viewport.scale * 1.2);
@@ -59,7 +62,42 @@ export const ZoomControls: React.FC<ZoomControlsProps> = ({
   };
 
   const handleResetView = () => {
-    setViewport({ x: 0, y: 0, scale: 1 });
+    if (images.length === 0) {
+      // If no images, reset to default view
+      setViewport({ x: 0, y: 0, scale: 1 });
+      return;
+    }
+
+    // Calculate bounds of all images
+    let minX = Infinity,
+      minY = Infinity;
+    let maxX = -Infinity,
+      maxY = -Infinity;
+
+    images.forEach((img) => {
+      minX = Math.min(minX, img.x);
+      minY = Math.min(minY, img.y);
+      maxX = Math.max(maxX, img.x + img.width);
+      maxY = Math.max(maxY, img.y + img.height);
+    });
+
+    const contentWidth = maxX - minX;
+    const contentHeight = maxY - minY;
+    const centerX = (minX + maxX) / 2;
+    const centerY = (minY + maxY) / 2;
+
+    // Calculate scale to fit content with padding (zoom to fit everything in view)
+    const padding = 100;
+    const scaleX = (canvasSize.width - padding * 2) / contentWidth;
+    const scaleY = (canvasSize.height - padding * 2) / contentHeight;
+    const newScale = Math.min(scaleX, scaleY, 2); // Max 200% zoom
+
+    // Center content on screen with proper zoom
+    setViewport({
+      x: canvasSize.width / 2 - centerX * newScale,
+      y: canvasSize.height / 2 - centerY * newScale,
+      scale: Math.max(0.1, Math.min(5, newScale)),
+    });
   };
 
   return (
