@@ -155,18 +155,29 @@ export const MiniMap: React.FC<MiniMapProps> = ({
         style={{ cursor: isDraggingViewport ? "grabbing" : "pointer" }}
       >
         {/* Render tiny versions of images */}
-        {images.map((img) => (
-          <div
-            key={img.id}
-            className="absolute bg-primary/50"
-            style={{
-              left: `${(img.x - minX) * scale + offsetX}px`,
-              top: `${(img.y - minY) * scale + offsetY}px`,
-              width: `${img.width * scale}px`,
-              height: `${img.height * scale}px`,
-            }}
-          />
-        ))}
+        {images.map((img) => {
+          const centerX =
+            (img.x - minX) * scale + offsetX + (img.width * scale) / 2;
+          const centerY =
+            (img.y - minY) * scale + offsetY + (img.height * scale) / 2;
+
+          return (
+            <div
+              key={img.id}
+              className="absolute bg-primary/50"
+              style={{
+                left: `${(img.x - minX) * scale + offsetX}px`,
+                top: `${(img.y - minY) * scale + offsetY}px`,
+                width: `${img.width * scale}px`,
+                height: `${img.height * scale}px`,
+                transform: img.rotation
+                  ? `rotate(${img.rotation}deg)`
+                  : undefined,
+                transformOrigin: "center",
+              }}
+            />
+          );
+        })}
 
         {/* Viewport indicator */}
         <div
