@@ -59,7 +59,7 @@ export const videoToCanvasElement = (video: PlacedVideo): CanvasElement => ({
   volume: video.volume,
   muted: video.muted,
 });
-=======
+
 // Convert canvas coordinates to screen coordinates
 export const canvasToScreen = (
   canvasX: number,
