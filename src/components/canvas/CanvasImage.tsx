@@ -136,7 +136,7 @@ export const CanvasImage: React.FC<CanvasImageProps> = ({
                     }
                   }
                   return img;
-                })
+                }),
               );
             }
           } else {
