@@ -94,3 +94,156 @@ export const calculateBoundingBox = (
     height: maxY - minY,
   };
 };
+
+// Calculate the bounding box of selected images
+export const calculateSelectionBounds = (
+  images: PlacedImage[],
+  selectedIds: string[],
+) => {
+  if (selectedIds.length === 0) return null;
+
+  const selectedImages = images.filter((img) => selectedIds.includes(img.id));
+  if (selectedImages.length === 0) return null;
+
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+
+  selectedImages.forEach((image) => {
+    const bounds = calculateBoundingBox(image);
+    minX = Math.min(minX, bounds.x);
+    minY = Math.min(minY, bounds.y);
+    maxX = Math.max(maxX, bounds.x + bounds.width);
+    maxY = Math.max(maxY, bounds.y + bounds.height);
+  });
+
+  return {
+    x: minX,
+    y: minY,
+    width: maxX - minX,
+    height: maxY - minY,
+    centerX: (minX + maxX) / 2,
+    centerY: (minY + maxY) / 2,
+  };
+};
+
+// Find empty space on the canvas for an image
+export const findEmptySpaceForImage = (
+  image: PlacedImage,
+  allImages: PlacedImage[],
+  index: number = 0,
+  gap: number = 50,
+): { x: number; y: number } => {
+  // Filter out the current image from the list
+  const otherImages = allImages.filter((img) => img.id !== image.id);
+
+  if (otherImages.length === 0) {
+    // If no other images, place at origin
+    return { x: 0, y: 0 };
+  }
+
+  // Find the rightmost edge of all images
+  let rightmostX = -Infinity;
+  let topY = Infinity;
+
+  otherImages.forEach((img) => {
+    const bounds = calculateBoundingBox(img);
+    rightmostX = Math.max(rightmostX, bounds.x + bounds.width);
+    topY = Math.min(topY, bounds.y);
+  });
+
+  // Position new image to the right of existing images
+  // If multiple images are being reset, offset them horizontally
+  const x = rightmostX + gap + index * (image.width + gap);
+  const y = topY;
+
+  // Check if this position overlaps with any existing image
+  const proposedBounds = {
+    x,
+    y,
+    width: image.width,
+    height: image.height,
+  };
+
+  // Simple overlap check
+  let overlaps = false;
+  for (const otherImage of otherImages) {
+    const otherBounds = calculateBoundingBox(otherImage);
+    if (
+      proposedBounds.x < otherBounds.x + otherBounds.width &&
+      proposedBounds.x + proposedBounds.width > otherBounds.x &&
+      proposedBounds.y < otherBounds.y + otherBounds.height &&
+      proposedBounds.y + proposedBounds.height > otherBounds.y
+    ) {
+      overlaps = true;
+      break;
+    }
+  }
+
+  // If overlaps, try positioning below the existing images
+  if (overlaps) {
+    let bottomY = -Infinity;
+    otherImages.forEach((img) => {
+      const bounds = calculateBoundingBox(img);
+      bottomY = Math.max(bottomY, bounds.y + bounds.height);
+    });
+
+    return {
+      x: gap + index * (image.width + gap),
+      y: bottomY + gap,
+    };
+  }
+
+  return { x, y };
+};
+
+// Check if two images overlap or are too close
+export const checkImageOverlapOrProximity = (
+  image1: PlacedImage,
+  image2: PlacedImage,
+  minGap: number = 10,
+): boolean => {
+  // Get bounding boxes for both images (considering rotation)
+  const bounds1 = calculateBoundingBox(image1);
+  const bounds2 = calculateBoundingBox(image2);
+
+  // Add gap to bounds for proximity check
+  const expandedBounds1 = {
+    x: bounds1.x - minGap,
+    y: bounds1.y - minGap,
+    width: bounds1.width + minGap * 2,
+    height: bounds1.height + minGap * 2,
+  };
+
+  // Check if expanded bounds overlap
+  return (
+    expandedBounds1.x < bounds2.x + bounds2.width &&
+    expandedBounds1.x + expandedBounds1.width > bounds2.x &&
+    expandedBounds1.y < bounds2.y + bounds2.height &&
+    expandedBounds1.y + expandedBounds1.height > bounds2.y
+  );
+};
+
+// Check if an image needs resetting (rotated or overlapping/too close to others)
+export const imageNeedsReset = (
+  image: PlacedImage,
+  allImages: PlacedImage[],
+  minGap: number = 10,
+): boolean => {
+  // Check if rotated
+  if (image.rotation !== 0) {
+    return true;
+  }
+
+  // Check if overlapping or too close to any other image
+  for (const otherImage of allImages) {
+    if (otherImage.id === image.id) continue;
+
+    if (checkImageOverlapOrProximity(image, otherImage, minGap)) {
+      return true;
+    }
+  }
+
+  return false;
+};

@@ -63,7 +63,7 @@ export const ZoomControls: React.FC<ZoomControlsProps> = ({
   };
 
   return (
-    <div className="absolute bottom-4 right-4 flex-col hidden md:flex items-end gap-2 z-20">
+    <div className="absolute bottom-4 right-4 hidden md:flex flex-col items-end gap-2 z-20">
       <Button
         variant="secondary"
         size="sm"

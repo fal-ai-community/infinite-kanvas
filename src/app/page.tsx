@@ -66,7 +66,13 @@ import type {
   SelectionBox,
 } from "@/types/canvas";
 
-import { imageToCanvasElement } from "@/utils/canvas-utils";
+import {
+  imageToCanvasElement,
+  calculateSelectionBounds,
+  findEmptySpaceForImage,
+  imageNeedsReset,
+  checkImageOverlapOrProximity,
+} from "@/utils/canvas-utils";
 import { checkOS } from "@/utils/os-utils";
 
 // Import additional extracted components
@@ -77,6 +83,7 @@ import { MiniMap } from "@/components/canvas/MiniMap";
 import { ZoomControls } from "@/components/canvas/ZoomControls";
 import { MobileToolbar } from "@/components/canvas/MobileToolbar";
 import { CanvasContextMenu } from "@/components/canvas/CanvasContextMenu";
+import { ShortcutsPanel } from "@/components/canvas/ShortcutsPanel";
 import { DimensionDisplay } from "@/components/canvas/DimensionDisplay";
 import Image from "next/image";
 
@@ -665,8 +672,8 @@ export default function OverlayPage() {
     const stage = stageRef.current;
     if (!stage) return;
 
-    // Check if this is a pinch gesture (ctrl key is pressed on trackpad pinch)
-    if (e.evt.ctrlKey) {
+    // Check if spacebar is held for zoom mode or pinch gesture (ctrl key on trackpad)
+    if (isSpacebarHeld || e.evt.ctrlKey) {
       // This is a pinch-to-zoom gesture
       const oldScale = viewport.scale;
       const pointer = stage.getPointerPosition();
@@ -1627,10 +1634,118 @@ export default function OverlayPage() {
           scale: newScale,
         });
       }
-      // Reset zoom
-      else if (e.key === "0" && (e.metaKey || e.ctrlKey)) {
+      // Reset selected images transformations
+      else if (e.key === "0" && (e.metaKey || e.ctrlKey) && !isInputElement) {
         e.preventDefault();
-        setViewport({ x: 0, y: 0, scale: 1 });
+
+        if (selectedIds.length === 0) return;
+
+        // Check which selected images actually need resetting
+        const selectedImages = images.filter((img) =>
+          selectedIds.includes(img.id),
+        );
+        const imagesToReset = selectedImages.filter((img) =>
+          imageNeedsReset(img, images),
+        );
+
+        // If no images need resetting, do nothing
+        if (imagesToReset.length === 0) return;
+
+        saveToHistory();
+
+        setImages((prev) => {
+          // Create a map for new positions of images that need repositioning
+          const positionMap = new Map();
+          let repositionIndex = 0;
+
+          // Process each selected image
+          selectedImages.forEach((img) => {
+            if (!imageNeedsReset(img, prev)) return;
+
+            // Check if image needs repositioning (overlapping/too close)
+            const needsReposition = prev.some(
+              (otherImg) =>
+                otherImg.id !== img.id &&
+                checkImageOverlapOrProximity(img, otherImg),
+            );
+
+            if (needsReposition) {
+              const newPosition = findEmptySpaceForImage(
+                img,
+                prev,
+                repositionIndex,
+              );
+              positionMap.set(img.id, newPosition);
+              repositionIndex++;
+            }
+          });
+
+          // Update images in place
+          return prev.map((img) => {
+            if (!selectedIds.includes(img.id) || !imageNeedsReset(img, prev)) {
+              return img;
+            }
+
+            const newPos = positionMap.get(img.id);
+            if (newPos) {
+              // Image needs both rotation reset and repositioning
+              return {
+                ...img,
+                x: newPos.x,
+                y: newPos.y,
+                rotation: 0,
+              };
+            } else {
+              // Image only needs rotation reset
+              return {
+                ...img,
+                rotation: 0,
+              };
+            }
+          });
+        });
+
+        // Force sync Stage position to prevent viewport jumping
+        if (stageRef.current) {
+          // Use setTimeout to ensure state update completes first
+          setTimeout(() => {
+            if (stageRef.current) {
+              // Ensure Stage position matches viewport state
+              stageRef.current.position({
+                x: viewport.x,
+                y: viewport.y,
+              });
+              stageRef.current.batchDraw();
+            }
+          }, 0);
+        }
+      }
+      // Zoom to selection (Ctrl/Cmd+F)
+      else if (e.key === "f" && (e.metaKey || e.ctrlKey) && !isInputElement) {
+        e.preventDefault();
+
+        if (selectedIds.length === 0) return;
+
+        // Calculate bounds of selected images
+        const selectionBounds = calculateSelectionBounds(images, selectedIds);
+        if (!selectionBounds) return;
+
+        // Calculate scale to fit selection with padding
+        const padding = 100;
+        const scaleX = (canvasSize.width - padding * 2) / selectionBounds.width;
+        const scaleY =
+          (canvasSize.height - padding * 2) / selectionBounds.height;
+        const scale = Math.min(scaleX, scaleY, 2); // Allow up to 200% zoom
+
+        // Center the selection
+        const centerX = canvasSize.width / 2;
+        const centerY = canvasSize.height / 2;
+
+        setViewport({
+          x: centerX - selectionBounds.centerX * scale,
+          y: centerY - selectionBounds.centerY * scale,
+          scale: Math.max(0.1, Math.min(5, scale)),
+        });
       }
       // Spacebar for pan mode
       else if (e.key === " " && !isInputElement) {
@@ -1821,13 +1936,15 @@ export default function OverlayPage() {
                       // This is lightweight and won't cause performance issues
                     }}
                     onDragEnd={(e) => {
-                      // Update viewport state when drag ends
-                      const stage = e.target;
-                      setViewport({
-                        x: stage.x(),
-                        y: stage.y(),
-                        scale: viewport.scale,
-                      });
+                      // Only update viewport if we were actually panning
+                      if (isPanningCanvas || isSpacebarHeld) {
+                        const stage = e.target;
+                        setViewport({
+                          x: stage.x(),
+                          y: stage.y(),
+                          scale: viewport.scale,
+                        });
+                      }
                       setIsPanningCanvas(false);
                     }}
                     onMouseDown={handleMouseDown}
@@ -1889,7 +2006,9 @@ export default function OverlayPage() {
                       {images
                         .filter((image) => {
                           // Performance optimization: only render visible images
-                          const buffer = 100; // pixels buffer
+                          // Use larger buffer during panning to prevent images from disappearing
+                          const buffer =
+                            isPanningCanvas || isSpacebarHeld ? 1000 : 100; // pixels buffer
                           const viewBounds = {
                             left: -viewport.x / viewport.scale - buffer,
                             top: -viewport.y / viewport.scale - buffer,
@@ -2131,7 +2250,7 @@ export default function OverlayPage() {
                         d="M13 10V3L4 14h7v7l9-11h-7z"
                       />
                     </svg>
-                    <span>Pan Mode - Drag to move canvas</span>
+                    <span>Pan mode</span>
                   </div>
                 )}
 
@@ -2502,6 +2621,9 @@ export default function OverlayPage() {
             canvasSize={canvasSize}
             onViewportChange={setViewport}
           />
+
+          {/* Shortcuts panel - under minimap */}
+          <ShortcutsPanel />
 
           {/* {isSaving && (
             <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-30 bg-background/95 border rounded-md px-3 py-2 flex items-center gap-2 shadow-sm">
