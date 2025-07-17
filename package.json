@@ -9,7 +9,8 @@
     "lint": "next lint",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,mdx}\" --cache",
     "format:write": "prettier --write \"**/*.{ts,tsx,js,jsx,mdx}\" --cache",
-    "export": "next build && next export || next build && bun ./scripts/export-workaround.js"
+    "export": "next build && next export || next build && bun ./scripts/export-workaround.js",
+    "prepare": "husky"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

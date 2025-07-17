@@ -143,6 +143,10 @@ Uses Bria's specialized background removal model:
 
 4. Run development server: `npm run dev`
 
+### Pre-commit Hook
+
+This project uses a pre-commit hook located at `.husky/pre-commit` to help maintain code quality and consistency. The hook automatically formats your code using `npm run format:write` and stages any formatting changes before each commit. No manual action is required—just commit as usual, and the formatting will be handled for you.
+
 ### Tech Stack
 
 - **Next.js 15**: React framework with App Router
