@@ -2,13 +2,14 @@ import React, { useRef, useState, useEffect } from "react";
 import {
   Rect,
   Group,
-  Text,
   Line,
   Image as KonvaImage,
   Transformer,
 } from "react-konva";
+import { Html } from "react-konva-utils";
 import Konva from "konva";
 import type { PlacedImage } from "@/types/canvas";
+import { Button } from "@/components/ui/button";
 
 interface CropOverlayProps {
   image: PlacedImage;
@@ -33,7 +34,6 @@ export const CropOverlay: React.FC<CropOverlayProps> = ({
   const cropRectRef = useRef<Konva.Rect>(null);
   const cropTransformerRef = useRef<Konva.Transformer>(null);
   const [grid, setGrid] = useState<Array<{ points: number[] }>>([]);
-  const [isHoveringDone, setIsHoveringDone] = useState(false);
 
   // Initialize crop values (default to full image if not set)
   const cropX = (image.cropX ?? 0) * image.width;
@@ -223,40 +223,21 @@ export const CropOverlay: React.FC<CropOverlayProps> = ({
         flipEnabled={false}
       />
 
-      {/* Done button - styled to match our button component */}
-      <Group
-        x={cropX + cropWidth - 70 / viewportScale}
-        y={cropY - 45 / viewportScale}
-        scaleX={1 / viewportScale}
-        scaleY={1 / viewportScale}
-        onMouseEnter={() => setIsHoveringDone(true)}
-        onMouseLeave={() => setIsHoveringDone(false)}
-        onClick={onCropEnd}
-        onTap={onCropEnd}
+      {/* Done button - HTML rendered using portal */}
+      <Html
+        groupProps={{
+          x: cropX + cropWidth,
+          y: cropY,
+          scaleX: 1 / viewportScale,
+          scaleY: 1 / viewportScale,
+        }}
       >
-        <Rect
-          width={70}
-          height={36}
-          fill={isHoveringDone ? "#8b5cf6" : "#a855f7"}
-          cornerRadius={6}
-          shadowColor="black"
-          shadowBlur={8}
-          shadowOpacity={0.15}
-          shadowOffsetY={2}
-        />
-        <Text
-          text="Done"
-          fontSize={14}
-          fontFamily="system-ui, -apple-system, sans-serif"
-          fontStyle="500"
-          fill="white"
-          width={70}
-          height={36}
-          align="center"
-          verticalAlign="middle"
-          listening={false}
-        />
-      </Group>
+        <div className="py-2 -translate-x-full -translate-y-full">
+          <Button variant="primary" onClick={onCropEnd} className="select-none">
+            Done
+          </Button>
+        </div>
+      </Html>
     </Group>
   );
 };
