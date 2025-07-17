@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useRef } from "react";
 import type { PlacedImage } from "@/types/canvas";
 
 interface MiniMapProps {
@@ -21,6 +21,10 @@ export const MiniMap: React.FC<MiniMapProps> = ({
   canvasSize,
   setViewport,
 }) => {
+  const [isDraggingViewport, setIsDraggingViewport] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const minimapRef = useRef<HTMLDivElement>(null);
+
   // Calculate bounds of all content
   let minX = Infinity,
     minY = Infinity;
@@ -49,6 +53,8 @@ export const MiniMap: React.FC<MiniMapProps> = ({
   const offsetY = (miniMapHeight - contentHeight * scale) / 2;
 
   const handleMiniMapClick = (e: React.MouseEvent) => {
+    if (isDraggingViewport) return;
+
     const rect = e.currentTarget.getBoundingClientRect();
     const clickX = e.clientX - rect.left;
     const clickY = e.clientY - rect.top;
@@ -68,11 +74,85 @@ export const MiniMap: React.FC<MiniMapProps> = ({
     });
   };
 
+  const handleViewportMouseDown = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsDraggingViewport(true);
+    setDragStart({ x: e.clientX, y: e.clientY });
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDraggingViewport || !minimapRef.current) return;
+
+    const rect = minimapRef.current.getBoundingClientRect();
+    const deltaX = e.clientX - dragStart.x;
+    const deltaY = e.clientY - dragStart.y;
+
+    const canvasDeltaX = deltaX / scale;
+    const canvasDeltaY = deltaY / scale;
+
+    const newViewportX = viewport.x - canvasDeltaX * viewport.scale;
+    const newViewportY = viewport.y - canvasDeltaY * viewport.scale;
+
+    setViewport({
+      x: newViewportX,
+      y: newViewportY,
+      scale: viewport.scale,
+    });
+
+    setDragStart({ x: e.clientX, y: e.clientY });
+  };
+
+  const handleMouseUp = () => {
+    setIsDraggingViewport(false);
+  };
+
+  React.useEffect(() => {
+    if (isDraggingViewport) {
+      const handleGlobalMouseMove = (e: MouseEvent) => {
+        if (!minimapRef.current) return;
+
+        const rect = minimapRef.current.getBoundingClientRect();
+        const deltaX = e.clientX - dragStart.x;
+        const deltaY = e.clientY - dragStart.y;
+
+        const canvasDeltaX = deltaX / scale;
+        const canvasDeltaY = deltaY / scale;
+
+        const newViewportX = viewport.x - canvasDeltaX * viewport.scale;
+        const newViewportY = viewport.y - canvasDeltaY * viewport.scale;
+
+        setViewport({
+          x: newViewportX,
+          y: newViewportY,
+          scale: viewport.scale,
+        });
+
+        setDragStart({ x: e.clientX, y: e.clientY });
+      };
+
+      const handleGlobalMouseUp = () => {
+        setIsDraggingViewport(false);
+      };
+
+      document.addEventListener("mousemove", handleGlobalMouseMove);
+      document.addEventListener("mouseup", handleGlobalMouseUp);
+
+      return () => {
+        document.removeEventListener("mousemove", handleGlobalMouseMove);
+        document.removeEventListener("mouseup", handleGlobalMouseUp);
+      };
+    }
+  }, [isDraggingViewport, dragStart, viewport, scale, setViewport]);
+
   return (
     <div className="absolute top-4 right-2 md:right-4 z-20 bg-background/95 border rounded shadow-sm p-1 md:p-2">
       <div
+        ref={minimapRef}
         className="relative w-32 h-24 md:w-48 md:h-32 bg-muted rounded overflow-hidden cursor-pointer hover:bg-muted/80 transition-colors"
         onClick={handleMiniMapClick}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        style={{ cursor: isDraggingViewport ? "grabbing" : "pointer" }}
       >
         {/* Render tiny versions of images */}
         {images.map((img) => (
@@ -90,13 +170,14 @@ export const MiniMap: React.FC<MiniMapProps> = ({
 
         {/* Viewport indicator */}
         <div
-          className="absolute border-2 border-blue-500 bg-blue-500/10"
+          className="absolute border-2 border-blue-500 bg-blue-500/10 cursor-grab active:cursor-grabbing hover:bg-blue-500/20 transition-colors"
           style={{
             left: `${(-viewport.x / viewport.scale - minX) * scale + offsetX}px`,
             top: `${(-viewport.y / viewport.scale - minY) * scale + offsetY}px`,
             width: `${(canvasSize.width / viewport.scale) * scale}px`,
             height: `${(canvasSize.height / viewport.scale) * scale}px`,
           }}
+          onMouseDown={handleViewportMouseDown}
         />
       </div>
       <p className="text-xs text-muted-foreground mt-1 text-center">Mini-map</p>
