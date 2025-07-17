@@ -5,6 +5,9 @@ import useImage from "use-image";
 import { useStreamingImage } from "@/hooks/useStreamingImage";
 import type { PlacedImage } from "@/types/canvas";
 
+// Configure Konva to only allow left mouse button for dragging
+Konva.dragButtons = [0];
+
 interface CanvasImageProps {
   image: PlacedImage;
   isSelected: boolean;
@@ -43,7 +46,6 @@ export const CanvasImage: React.FC<CanvasImageProps> = ({
   const [normalImg] = useImage(image.isGenerated ? "" : image.src, "anonymous");
   const img = image.isGenerated ? streamingImg : normalImg;
   const [isHovered, setIsHovered] = useState(false);
-  const [isDraggable, setIsDraggable] = useState(true);
 
   useEffect(() => {
     if (isSelected && trRef.current && shapeRef.current) {
@@ -78,30 +80,13 @@ export const CanvasImage: React.FC<CanvasImageProps> = ({
               }
             : undefined
         }
-        draggable={isDraggable}
+        draggable={true}
         onClick={onSelect}
         onTap={onSelect}
         onDblClick={onDoubleClick}
         onDblTap={onDoubleClick}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
-        onMouseDown={(e) => {
-          // Block ALL non-standard mouse buttons (anything that isn't left or right click)
-          if (e.evt.button !== 0 && e.evt.button !== 2) {
-            e.evt.preventDefault();
-            e.evt.stopPropagation();
-            return;
-          }
-
-          // Only allow dragging with left mouse button (0)
-          // Right mouse (2) should not drag images
-          const isLeftButton = e.evt.button === 0;
-          setIsDraggable(isLeftButton);
-        }}
-        onMouseUp={() => {
-          // Re-enable dragging after mouse up
-          setIsDraggable(true);
-        }}
         onDragStart={(e) => {
           // Stop propagation to prevent stage from being dragged
           e.cancelBubble = true;

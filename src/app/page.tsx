@@ -893,19 +893,17 @@ export default function OverlayPage() {
   const handleMouseDown = (e: any) => {
     const clickedOnEmpty = e.target === e.target.getStage();
     const stage = e.target.getStage();
-    const mouseButton = e.evt.button; // 0 = left, 1 = middle, 2 = right, 3+ = additional buttons
+    const isLeftButton = e.evt.button === 0;
 
-    // Block ALL non-standard mouse buttons (anything that isn't left or right click)
-    if (mouseButton !== 0 && mouseButton !== 2) {
-      e.evt.preventDefault();
-      e.evt.stopPropagation();
+    // If spacebar is held and left mouse button, let Konva handle panning
+    if (isSpacebarHeld && isLeftButton) {
+      // Don't prevent default - let Konva handle the drag
+      setIsPanningCanvas(true);
       return;
     }
 
-    // If spacebar is held and left mouse button, let Konva handle panning
-    if (isSpacebarHeld && mouseButton === 0) {
-      // Don't prevent default - let Konva handle the drag
-      setIsPanningCanvas(true);
+    // Only proceed with left mouse button for other interactions
+    if (!isLeftButton) {
       return;
     }
 
@@ -923,7 +921,7 @@ export default function OverlayPage() {
     }
 
     // Start selection box when left-clicking on empty space
-    if (clickedOnEmpty && !croppingImageId && mouseButton === 0) {
+    if (clickedOnEmpty && !croppingImageId) {
       const pos = stage.getPointerPosition();
       if (pos) {
         // Convert screen coordinates to canvas coordinates
@@ -1871,44 +1869,6 @@ export default function OverlayPage() {
     sendBackward,
     isPanningCanvas,
   ]);
-
-  // Block ALL non-standard mouse buttons globally to prevent browser behaviors
-  useEffect(() => {
-    const handleNonStandardMouseDown = (e: MouseEvent) => {
-      // Block anything that isn't left (0) or right (2) click
-      if (e.button !== 0 && e.button !== 2) {
-        e.preventDefault();
-        e.stopPropagation();
-      }
-    };
-
-    const handleNonStandardMouseUp = (e: MouseEvent) => {
-      // Block anything that isn't left (0) or right (2) click
-      if (e.button !== 0 && e.button !== 2) {
-        e.preventDefault();
-        e.stopPropagation();
-      }
-    };
-
-    const handleNonStandardMouseClick = (e: MouseEvent) => {
-      // Block anything that isn't left (0) or right (2) click
-      if (e.button !== 0 && e.button !== 2) {
-        e.preventDefault();
-        e.stopPropagation();
-      }
-    };
-
-    // Add listeners to the entire window to catch all non-standard mouse events
-    window.addEventListener("mousedown", handleNonStandardMouseDown, true);
-    window.addEventListener("mouseup", handleNonStandardMouseUp, true);
-    window.addEventListener("click", handleNonStandardMouseClick, true);
-
-    return () => {
-      window.removeEventListener("mousedown", handleNonStandardMouseDown, true);
-      window.removeEventListener("mouseup", handleNonStandardMouseUp, true);
-      window.removeEventListener("click", handleNonStandardMouseClick, true);
-    };
-  }, []);
 
   return (
     <div
