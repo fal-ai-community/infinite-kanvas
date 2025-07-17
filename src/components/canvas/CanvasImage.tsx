@@ -182,11 +182,14 @@ export const CanvasImage: React.FC<CanvasImageProps> = ({
               );
             }
           } else {
-            // Single item: update only this image's position
-            onChange({
-              x: node.x(),
-              y: node.y(),
-            });
+            // Single item: update only this image's position in the images array
+            setImages((prev) =>
+              prev.map((img) =>
+                img.id === image.id
+                  ? { ...img, x: node.x(), y: node.y() }
+                  : img
+              )
+            );
           }
 
           onDragEnd();
