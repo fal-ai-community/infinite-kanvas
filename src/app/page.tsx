@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { useState, useCallback } from "react";
+import { useState, useCallback, startTransition } from "react";
 import { Stage, Layer, Rect, Group, Line } from "react-konva";
 import Konva from "konva";
 import { canvasStorage, type CanvasState } from "@/lib/storage";
@@ -1745,20 +1745,18 @@ export default function OverlayPage() {
         // Calculate bounds of all reset images using their new coordinates
         const resetBounds = calculateBoundsFromCoordinates(resetCoordinates);
 
-        // Pan to the reset images immediately using direct coordinate calculation
+        // Pan to center the reset images at current zoom level (no zoom change)
         if (resetBounds) {
-          const padding = 100;
-          const scaleX = (canvasSize.width - padding * 2) / resetBounds.width;
-          const scaleY = (canvasSize.height - padding * 2) / resetBounds.height;
-          const scale = Math.min(scaleX, scaleY, 2); // Allow up to 200% zoom
-
           const centerX = canvasSize.width / 2;
           const centerY = canvasSize.height / 2;
 
-          setViewport({
-            x: centerX - resetBounds.centerX * scale,
-            y: centerY - resetBounds.centerY * scale,
-            scale: Math.max(0.1, Math.min(5, scale)),
+          // Use startTransition to mark viewport update as non-urgent
+          startTransition(() => {
+            setViewport({
+              x: centerX - resetBounds.centerX * viewport.scale,
+              y: centerY - resetBounds.centerY * viewport.scale,
+              scale: viewport.scale, // Keep current zoom level
+            });
           });
         }
 

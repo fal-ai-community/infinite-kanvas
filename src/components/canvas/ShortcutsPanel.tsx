@@ -12,7 +12,7 @@ export const ShortcutsPanel: React.FC = () => {
     {
       icon: <Hand className="h-3 w-3" />,
       keys: ["Space", "Drag"],
-      description: "Pan mode",
+      description: "Pan",
     },
     {
       icon: <Search className="h-3 w-3" />,
