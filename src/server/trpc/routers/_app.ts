@@ -262,10 +262,10 @@ export const appRouter = router({
         imageSize: z
           .enum([
             "landscape_4_3",
-            "portrait_3_4",
+            "portrait_4_3",
             "square",
             "landscape_16_9",
-            "portrait_9_16",
+            "portrait_16_9",
           ])
           .optional(),
         apiKey: z.string().optional(),
@@ -294,15 +294,17 @@ export const appRouter = router({
           },
         );
 
-        if (!result.data?.images?.[0]) {
+        // Handle different possible response structures
+        const resultData = (result as any).data || result;
+        if (!resultData.images?.[0]) {
           throw new Error("No image generated");
         }
 
         return {
-          url: result.data.images[0].url,
-          width: result.data.images[0].width,
-          height: result.data.images[0].height,
-          seed: result.data.seed,
+          url: resultData.images[0].url,
+          width: resultData.images[0].width,
+          height: resultData.images[0].height,
+          seed: resultData.seed,
         };
       } catch (error) {
         console.error("Error in text-to-image generation:", error);
@@ -367,7 +369,8 @@ export const appRouter = router({
         const result = await stream.done();
 
         // Handle different possible response structures
-        const images = result.data?.images || result.images || [];
+        const resultData = (result as any).data || result;
+        const images = resultData.images || [];
         if (!images?.[0]) {
           yield tracked(`${generationId}_error`, {
             type: "error",
@@ -380,7 +383,7 @@ export const appRouter = router({
         yield tracked(`${generationId}_complete`, {
           type: "complete",
           imageUrl: images[0].url,
-          seed: result.data?.seed || result.seed,
+          seed: resultData.seed,
         });
       } catch (error) {
         console.error("Error in image generation stream:", error);

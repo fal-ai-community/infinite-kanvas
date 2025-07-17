@@ -38,7 +38,6 @@ export const CanvasImage: React.FC<CanvasImageProps> = ({
 }) => {
   const shapeRef = useRef<Konva.Image>(null);
   const trRef = useRef<Konva.Transformer>(null);
-  const dragMoveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   // Use streaming image hook for generated images to prevent flicker
   const [streamingImg] = useStreamingImage(image.isGenerated ? image.src : "");
   const [normalImg] = useImage(image.isGenerated ? "" : image.src, "anonymous");
@@ -57,15 +56,6 @@ export const CanvasImage: React.FC<CanvasImageProps> = ({
       }
     }
   }, [isSelected, selectedIds.length]);
-
-  // Cleanup timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (dragMoveTimeoutRef.current) {
-        clearTimeout(dragMoveTimeoutRef.current);
-      }
-    };
-  }, []);
 
   return (
     <>
@@ -121,48 +111,16 @@ export const CanvasImage: React.FC<CanvasImageProps> = ({
           onDragStart();
         }}
         onDragMove={(e) => {
-          // Don't update state during drag - let Konva handle the visual positioning
-          // This prevents unnecessary re-renders while dragging
           const node = e.target;
 
           if (selectedIds.includes(image.id) && selectedIds.length > 1) {
-            // For multi-selection, update other selected items' visual positions
+            // Calculate delta from drag start position
             const startPos = dragStartPositions.get(image.id);
             if (startPos) {
               const deltaX = node.x() - startPos.x;
               const deltaY = node.y() - startPos.y;
 
-              // Update visual positions of other selected items without state changes
-              const stage = node.getStage();
-              if (stage) {
-                selectedIds.forEach((id) => {
-                  if (id !== image.id) {
-                    const otherStartPos = dragStartPositions.get(id);
-                    if (otherStartPos) {
-                      const otherNode = stage.findOne(`#${id}`);
-                      if (otherNode && typeof otherNode.x === "function") {
-                        otherNode.x(otherStartPos.x + deltaX);
-                        otherNode.y(otherStartPos.y + deltaY);
-                      }
-                    }
-                  }
-                });
-              }
-            }
-          }
-          // For single item drag, Konva handles the visual positioning automatically
-        }}
-        onDragEnd={(e) => {
-          // Update state only once when drag ends
-          const node = e.target;
-
-          if (selectedIds.includes(image.id) && selectedIds.length > 1) {
-            // Multi-selection: update all selected items' positions in state
-            const startPos = dragStartPositions.get(image.id);
-            if (startPos) {
-              const deltaX = node.x() - startPos.x;
-              const deltaY = node.y() - startPos.y;
-
+              // Update all selected items relative to their start positions
               setImages((prev) =>
                 prev.map((img) => {
                   if (img.id === image.id) {
@@ -178,20 +136,17 @@ export const CanvasImage: React.FC<CanvasImageProps> = ({
                     }
                   }
                   return img;
-                }),
+                })
               );
             }
           } else {
-            // Single item: update only this image's position in the images array
-            setImages((prev) =>
-              prev.map((img) =>
-                img.id === image.id
-                  ? { ...img, x: node.x(), y: node.y() }
-                  : img,
-              ),
-            );
+            onChange({
+              x: node.x(),
+              y: node.y(),
+            });
           }
-
+        }}
+        onDragEnd={(e) => {
           onDragEnd();
         }}
         onTransformEnd={(e) => {

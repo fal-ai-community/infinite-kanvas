@@ -12,12 +12,14 @@ interface CropOverlayWrapperProps {
     cropHeight: number;
   }) => void;
   onCropEnd: () => void;
+  viewportScale?: number;
 }
 
 export const CropOverlayWrapper: React.FC<CropOverlayWrapperProps> = ({
   image,
   onCropChange,
   onCropEnd,
+  viewportScale = 1,
 }) => {
   const [img] = useImage(image.src, "anonymous");
 
@@ -29,6 +31,7 @@ export const CropOverlayWrapper: React.FC<CropOverlayWrapperProps> = ({
       imageElement={img}
       onCropChange={onCropChange}
       onCropEnd={onCropEnd}
+      viewportScale={viewportScale}
     />
   );
 };
