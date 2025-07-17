@@ -86,16 +86,17 @@ export const CanvasImage: React.FC<CanvasImageProps> = ({
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         onMouseDown={(e) => {
-          // Only allow dragging with left mouse button (0)
-          // Middle mouse (1) and right mouse (2) should not drag images
-          const isLeftButton = e.evt.button === 0;
-          setIsDraggable(isLeftButton);
-
-          // For middle mouse button, don't stop propagation
-          // Let it bubble up to the stage for canvas panning
-          if (e.evt.button === 1) {
+          // Block ALL non-standard mouse buttons (anything that isn't left or right click)
+          if (e.evt.button !== 0 && e.evt.button !== 2) {
+            e.evt.preventDefault();
+            e.evt.stopPropagation();
             return;
           }
+
+          // Only allow dragging with left mouse button (0)
+          // Right mouse (2) should not drag images
+          const isLeftButton = e.evt.button === 0;
+          setIsDraggable(isLeftButton);
         }}
         onMouseUp={() => {
           // Re-enable dragging after mouse up
@@ -136,7 +137,7 @@ export const CanvasImage: React.FC<CanvasImageProps> = ({
                     }
                   }
                   return img;
-                })
+                }),
               );
             }
           } else {
