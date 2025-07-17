@@ -35,7 +35,7 @@ export const imageToCanvasElement = (image: PlacedImage): CanvasElement => ({
 export const canvasToScreen = (
   canvasX: number,
   canvasY: number,
-  viewport: Viewport
+  viewport: Viewport,
 ): { x: number; y: number } => {
   return {
     x: canvasX * viewport.scale + viewport.x,
@@ -44,7 +44,9 @@ export const canvasToScreen = (
 };
 
 // Calculate bounding box for an image considering rotation
-export const calculateBoundingBox = (image: PlacedImage): {x: number, y: number, width: number, height: number} => {
+export const calculateBoundingBox = (
+  image: PlacedImage,
+): { x: number; y: number; width: number; height: number } => {
   const { x, y, width, height, rotation } = image;
 
   // If no rotation, return simple bounding box
@@ -64,21 +66,21 @@ export const calculateBoundingBox = (image: PlacedImage): {x: number, y: number,
 
   // Calculate the four corners of the original rectangle
   const corners = [
-    { x: 0, y: 0 },           // top-left
-    { x: width, y: 0 },       // top-right
-    { x: width, y: height },  // bottom-right
-    { x: 0, y: height },      // bottom-left
+    { x: 0, y: 0 }, // top-left
+    { x: width, y: 0 }, // top-right
+    { x: width, y: height }, // bottom-right
+    { x: 0, y: height }, // bottom-left
   ];
 
   // Rotate each corner around the top-left corner (0,0)
-  const rotatedCorners = corners.map(corner => ({
+  const rotatedCorners = corners.map((corner) => ({
     x: corner.x * cos - corner.y * sin,
     y: corner.x * sin + corner.y * cos,
   }));
 
   // Find the bounding box of the rotated corners
-  const xs = rotatedCorners.map(c => c.x);
-  const ys = rotatedCorners.map(c => c.y);
+  const xs = rotatedCorners.map((c) => c.x);
+  const ys = rotatedCorners.map((c) => c.y);
 
   const minX = Math.min(...xs);
   const maxX = Math.max(...xs);

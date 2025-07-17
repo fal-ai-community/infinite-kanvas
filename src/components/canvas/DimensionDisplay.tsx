@@ -1,6 +1,10 @@
 import React from "react";
 import type { PlacedImage } from "@/types/canvas";
-import { canvasToScreen, calculateBoundingBox, type Viewport } from "@/utils/canvas-utils";
+import {
+  canvasToScreen,
+  calculateBoundingBox,
+  type Viewport,
+} from "@/utils/canvas-utils";
 
 interface DimensionDisplayProps {
   selectedImages: PlacedImage[];
@@ -67,7 +71,7 @@ export const DimensionDisplay: React.FC<DimensionDisplayProps> = ({
   const { x: screenX, y: screenY } = canvasToScreen(
     boundingBox.x + boundingBox.width / 2,
     boundingBox.y + boundingBox.height,
-    viewport
+    viewport,
   );
 
   return (
