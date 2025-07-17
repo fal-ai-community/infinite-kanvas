@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { useState, useCallback, startTransition } from "react";
+import { useState, useCallback } from "react";
 import { Stage, Layer, Rect, Group, Line } from "react-konva";
 import Konva from "konva";
 import { canvasStorage, type CanvasState } from "@/lib/storage";
@@ -1750,13 +1750,10 @@ export default function OverlayPage() {
           const centerX = canvasSize.width / 2;
           const centerY = canvasSize.height / 2;
 
-          // Use startTransition to mark viewport update as non-urgent
-          startTransition(() => {
-            setViewport({
-              x: centerX - resetBounds.centerX * viewport.scale,
-              y: centerY - resetBounds.centerY * viewport.scale,
-              scale: viewport.scale, // Keep current zoom level
-            });
+          setViewport({
+            x: centerX - resetBounds.centerX * viewport.scale,
+            y: centerY - resetBounds.centerY * viewport.scale,
+            scale: viewport.scale, // Keep current zoom level
           });
         }
 
