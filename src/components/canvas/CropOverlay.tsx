@@ -208,7 +208,7 @@ export const CropOverlay: React.FC<CropOverlayProps> = ({
           return newBox;
         }}
         enabledAnchors={[
-         "top-left",
+          "top-left",
           "top-center",
           "top-right",
           "middle-left",
@@ -233,7 +233,7 @@ export const CropOverlay: React.FC<CropOverlayProps> = ({
         <Rect
           width={70}
           height={36}
-          fill={isHoveringDone ? '#8b5cf6' : '#a855f7'}
+          fill={isHoveringDone ? "#8b5cf6" : "#a855f7"}
           cornerRadius={6}
           shadowColor="black"
           shadowBlur={8}
