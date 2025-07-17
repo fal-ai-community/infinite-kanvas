@@ -1,4 +1,8 @@
-import type { PlacedImage, GenerationSettings, ActiveGeneration } from "@/types/canvas";
+import type {
+  PlacedImage,
+  GenerationSettings,
+  ActiveGeneration,
+} from "@/types/canvas";
 import type { FalClient } from "@fal-ai/client";
 
 interface GenerationHandlerDeps {
@@ -11,18 +15,24 @@ interface GenerationHandlerDeps {
   falClient: FalClient;
   setImages: React.Dispatch<React.SetStateAction<PlacedImage[]>>;
   setSelectedIds: React.Dispatch<React.SetStateAction<string[]>>;
-  setActiveGenerations: React.Dispatch<React.SetStateAction<Map<string, ActiveGeneration>>>;
+  setActiveGenerations: React.Dispatch<
+    React.SetStateAction<Map<string, ActiveGeneration>>
+  >;
   setIsGenerating: React.Dispatch<React.SetStateAction<boolean>>;
   setIsApiKeyDialogOpen: React.Dispatch<React.SetStateAction<boolean>>;
-  toast: (props: { title: string; description?: string; variant?: "default" | "destructive" }) => void;
+  toast: (props: {
+    title: string;
+    description?: string;
+    variant?: "default" | "destructive";
+  }) => void;
   generateTextToImage: (params: any) => Promise<any>;
 }
 
 export const uploadImageDirect = async (
   dataUrl: string,
   falClient: FalClient,
-  toast: GenerationHandlerDeps['toast'],
-  setIsApiKeyDialogOpen: GenerationHandlerDeps['setIsApiKeyDialogOpen']
+  toast: GenerationHandlerDeps["toast"],
+  setIsApiKeyDialogOpen: GenerationHandlerDeps["setIsApiKeyDialogOpen"],
 ) => {
   // Convert data URL to blob first
   const response = await fetch(dataUrl);
@@ -34,7 +44,7 @@ export const uploadImageDirect = async (
       // 10MB warning
       console.warn(
         "Large image detected:",
-        (blob.size / 1024 / 1024).toFixed(2) + "MB"
+        (blob.size / 1024 / 1024).toFixed(2) + "MB",
       );
     }
 
@@ -78,10 +88,10 @@ export const generateImage = (
   y: number,
   groupId: string,
   generationSettings: GenerationSettings,
-  setImages: GenerationHandlerDeps['setImages'],
-  setActiveGenerations: GenerationHandlerDeps['setActiveGenerations'],
+  setImages: GenerationHandlerDeps["setImages"],
+  setActiveGenerations: GenerationHandlerDeps["setActiveGenerations"],
   width: number = 300,
-  height: number = 300
+  height: number = 300,
 ) => {
   const placeholderId = `generated-${Date.now()}`;
   setImages((prev) => [
@@ -105,7 +115,7 @@ export const generateImage = (
       imageUrl,
       prompt: generationSettings.prompt,
       loraUrl: generationSettings.loraUrl,
-    })
+    }),
   );
 };
 
@@ -241,7 +251,7 @@ export const handleRun = async (deps: GenerationHandlerDeps) => {
       canvas.height = effectiveHeight;
 
       console.log(
-        `Processing image at ${canvas.width}x${canvas.height} (original res, display: ${img.width}x${img.height})`
+        `Processing image at ${canvas.width}x${canvas.height} (original res, display: ${img.width}x${img.height})`,
       );
 
       // Always use the crop values (default to full image if not set)
@@ -254,7 +264,7 @@ export const handleRun = async (deps: GenerationHandlerDeps) => {
         0,
         0,
         canvas.width,
-        canvas.height
+        canvas.height,
       );
 
       // Convert to blob and upload
@@ -270,7 +280,12 @@ export const handleRun = async (deps: GenerationHandlerDeps) => {
 
       let uploadResult;
       try {
-        uploadResult = await uploadImageDirect(dataUrl, falClient, toast, setIsApiKeyDialogOpen);
+        uploadResult = await uploadImageDirect(
+          dataUrl,
+          falClient,
+          toast,
+          setIsApiKeyDialogOpen,
+        );
       } catch (uploadError) {
         console.error("Failed to upload image:", uploadError);
         failureCount++;
@@ -307,7 +322,7 @@ export const handleRun = async (deps: GenerationHandlerDeps) => {
         setImages,
         setActiveGenerations,
         img.width,
-        img.height
+        img.height,
       );
       successCount++;
     } catch (error) {

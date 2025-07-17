@@ -20,6 +20,7 @@ interface CropOverlayProps {
     cropHeight: number;
   }) => void;
   onCropEnd: () => void;
+  viewportScale?: number;
 }
 
 export const CropOverlay: React.FC<CropOverlayProps> = ({
@@ -27,6 +28,7 @@ export const CropOverlay: React.FC<CropOverlayProps> = ({
   imageElement,
   onCropChange,
   onCropEnd,
+  viewportScale = 1,
 }) => {
   const cropRectRef = useRef<Konva.Rect>(null);
   const cropTransformerRef = useRef<Konva.Transformer>(null);
@@ -223,8 +225,10 @@ export const CropOverlay: React.FC<CropOverlayProps> = ({
 
       {/* Done button - styled to match our button component */}
       <Group
-        x={cropX + cropWidth - 70}
-        y={cropY - 45}
+        x={cropX + cropWidth - 70 / viewportScale}
+        y={cropY - 45 / viewportScale}
+        scaleX={1 / viewportScale}
+        scaleY={1 / viewportScale}
         onMouseEnter={() => setIsHoveringDone(true)}
         onMouseLeave={() => setIsHoveringDone(false)}
         onClick={onCropEnd}
@@ -233,7 +237,7 @@ export const CropOverlay: React.FC<CropOverlayProps> = ({
         <Rect
           width={70}
           height={36}
-          fill={isHoveringDone ? "#2563eb" : "#3b82f6"}
+          fill={isHoveringDone ? "#8b5cf6" : "#a855f7"}
           cornerRadius={6}
           shadowColor="black"
           shadowBlur={8}

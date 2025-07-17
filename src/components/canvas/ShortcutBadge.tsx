@@ -25,7 +25,7 @@ export const shortcutBadgeVariants = cva(
       variant: "default",
       size: "sm",
     },
-  }
+  },
 );
 
 type BaseShortcutBadgeProps = {

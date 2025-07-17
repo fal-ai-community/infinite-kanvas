@@ -74,7 +74,7 @@ class CanvasStorage {
     const sizeInBytes = new Blob([dataUrl]).size;
     if (sizeInBytes > this.MAX_IMAGE_SIZE) {
       throw new Error(
-        `Image size exceeds maximum allowed size of ${this.MAX_IMAGE_SIZE / 1024 / 1024}MB`
+        `Image size exceeds maximum allowed size of ${this.MAX_IMAGE_SIZE / 1024 / 1024}MB`,
       );
     }
 
@@ -146,7 +146,7 @@ class CanvasStorage {
     const usedImageIds = new Set(
       state.elements
         .filter((el) => el.type === "image" && el.imageId)
-        .map((el) => el.imageId!)
+        .map((el) => el.imageId!),
     );
 
     // Delete unused images

@@ -48,8 +48,8 @@ export const StreamingImage: React.FC<StreamingImageProps> = ({
           console.error("Subscription error:", error);
           onError(imageId, error.message || "Generation failed");
         },
-      }
-    )
+      },
+    ),
   );
 
   return null;

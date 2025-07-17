@@ -64,7 +64,7 @@ export const MobileToolbar: React.FC<MobileToolbarProps> = ({
         "transition-transform duration-300 ease-in-out",
         selectedIds.length > 0
           ? "translate-x-0"
-          : "-translate-x-[calc(100%+1rem)]"
+          : "-translate-x-[calc(100%+1rem)]",
       )}
     >
       <Button

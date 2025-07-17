@@ -8,9 +8,9 @@ import {
 import { checkBotId } from "botid/server";
 
 const limiter: RateLimiter = {
-  perMinute: createRateLimiter(30, "60 s"),
-  perHour: createRateLimiter(120, "60 m"),
-  perDay: createRateLimiter(300, "24 h"),
+  perMinute: createRateLimiter(50, "60 s"),
+  perHour: createRateLimiter(250, "60 m"),
+  perDay: createRateLimiter(500, "24 h"),
 };
 
 export const POST = async (req: NextRequest) => {
@@ -43,7 +43,7 @@ export const POST = async (req: NextRequest) => {
                   : "100",
             "X-RateLimit-Period": limiterResult.period,
           },
-        }
+        },
       );
     }
   }
