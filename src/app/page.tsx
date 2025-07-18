@@ -816,6 +816,8 @@ export default function OverlayPage() {
               y: element.transform.y,
               width: element.width || 300,
               height: element.height || 300,
+              scaleX: element.transform.scaleX,
+              scaleY: element.transform.scaleY,
               rotation: element.transform.rotation,
               ...(element.transform.cropBox && {
                 cropX: element.transform.cropBox.x,

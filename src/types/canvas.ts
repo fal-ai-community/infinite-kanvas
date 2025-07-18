@@ -12,6 +12,8 @@ export interface PlacedImage {
   cropY?: number;
   cropWidth?: number;
   cropHeight?: number;
+  scaleX?: number;
+  scaleY?: number;
 }
 
 export interface PlacedVideo extends Omit<PlacedImage, "isGenerated"> {
