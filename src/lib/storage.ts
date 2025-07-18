@@ -11,8 +11,6 @@ interface ImageTransform {
   scale: number;
   x: number;
   y: number;
-  scaleX: number;
-  scaleY: number;
   rotation: number;
   cropBox?: {
     x: number;
