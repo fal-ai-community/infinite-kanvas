@@ -192,6 +192,86 @@ class CanvasStorage {
     // Import state
     this.saveCanvasState(data.state);
   }
+
+  // Navigation state preservation
+  private readonly NAVIGATION_STATE_KEY = "canvas-navigation-state";
+
+  // Save navigation state when navigating away from canvas
+  saveNavigationState(destination: string): void {
+    try {
+      // Mark that we're navigating away and where to
+      localStorage.setItem(
+        this.NAVIGATION_STATE_KEY,
+        JSON.stringify({
+          timestamp: Date.now(),
+          destination,
+          canvasStateKey: this.STATE_KEY,
+        }),
+      );
+    } catch (e) {
+      console.error("Failed to save navigation state:", e);
+    }
+  }
+
+  // Check if we're returning from navigation
+  getNavigationState(): {
+    timestamp: number;
+    destination: string;
+    canvasStateKey: string;
+  } | null {
+    try {
+      const stored = localStorage.getItem(this.NAVIGATION_STATE_KEY);
+      return stored ? JSON.parse(stored) : null;
+    } catch (e) {
+      console.error("Failed to get navigation state:", e);
+      return null;
+    }
+  }
+
+  // Clear navigation state
+  clearNavigationState(): void {
+    localStorage.removeItem(this.NAVIGATION_STATE_KEY);
+  }
+
+  // Test canvas state preservation
+  testStatePreservation(): boolean {
+    try {
+      // Create a test state
+      const testState: CanvasState = {
+        elements: [],
+        backgroundColor: "#ffffff",
+        lastModified: Date.now(),
+        viewport: { x: 0, y: 0, scale: 1 },
+      };
+
+      // Save test state
+      this.saveCanvasState(testState);
+
+      // Save navigation state
+      this.saveNavigationState("/test");
+
+      // Get navigation state
+      const navigationState = this.getNavigationState();
+
+      // Get canvas state
+      const retrievedState = this.getCanvasState();
+
+      // Clear test data
+      localStorage.removeItem(this.STATE_KEY);
+      this.clearNavigationState();
+
+      // Check if everything worked
+      return !!(
+        navigationState &&
+        navigationState.destination === "/test" &&
+        retrievedState &&
+        retrievedState.backgroundColor === testState.backgroundColor
+      );
+    } catch (e) {
+      console.error("State preservation test failed:", e);
+      return false;
+    }
+  }
 }
 
 export const canvasStorage = new CanvasStorage();
