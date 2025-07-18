@@ -17,6 +17,8 @@ export const imageToCanvasElement = (image: PlacedImage): CanvasElement => ({
     y: image.y,
     scale: 1, // We store width/height separately, so scale is 1
     rotation: image.rotation,
+    scaleX: image.scaleX || 1,
+    scaleY: image.scaleY || 1,
     ...(image.cropX !== undefined && {
       cropBox: {
         x: image.cropX,

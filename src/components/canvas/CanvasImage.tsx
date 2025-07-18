@@ -68,6 +68,8 @@ export const CanvasImage: React.FC<CanvasImageProps> = ({
         width={image.width}
         height={image.height}
         rotation={image.rotation}
+        scaleX={image.scaleX}
+        scaleY={image.scaleY}
         crop={
           image.cropX !== undefined && !isCroppingImage
             ? {
@@ -152,17 +154,11 @@ export const CanvasImage: React.FC<CanvasImageProps> = ({
         onTransformEnd={(e) => {
           const node = shapeRef.current;
           if (node) {
-            const scaleX = node.scaleX();
-            const scaleY = node.scaleY();
-
-            node.scaleX(1);
-            node.scaleY(1);
-
             onChange({
               x: node.x(),
               y: node.y(),
-              width: Math.max(5, node.width() * scaleX),
-              height: Math.max(5, node.height() * scaleY),
+              scaleX: node.scaleX(),
+              scaleY: node.scaleY(),
               rotation: node.rotation(),
             });
           }
@@ -175,9 +171,16 @@ export const CanvasImage: React.FC<CanvasImageProps> = ({
       {isSelected && selectedIds.length === 1 && (
         <Transformer
           ref={trRef}
-          boundBoxFunc={(oldBox, newBox) => {
-            if (newBox.width < 5 || newBox.height < 5) {
-              return oldBox;
+          boundBoxFunc={(_, newBox) => {
+            if (newBox.width < 0 && newBox.width > -5) {
+              newBox.width = -5;
+            } else if (newBox.width > 0 && newBox.width < 5) {
+              newBox.width = 5;
+            }
+            if (newBox.height < 0 && newBox.height > -5) {
+              newBox.height = -5;
+            } else if (newBox.height > 0 && newBox.height < 5) {
+              newBox.height = 5;
             }
             return newBox;
           }}
