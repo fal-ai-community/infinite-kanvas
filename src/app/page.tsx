@@ -2428,6 +2428,7 @@ export default function OverlayPage() {
             images={images}
             viewport={viewport}
             canvasSize={canvasSize}
+            setViewport={setViewport}
           />
 
           {/* {isSaving && (
