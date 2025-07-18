@@ -43,6 +43,18 @@ export const handleRemoveBackground = async (deps: BackgroundHandlerDeps) => {
       if (!image) continue;
 
       // Show loading state
+      setImages((prev) =>
+        prev.map((img) =>
+          img.id === imageId
+            ? {
+                ...img,
+                isLoading: true,
+                loadingMessage: "Removing background...",
+              }
+            : img,
+        ),
+      );
+
       toast({
         title: "Processing...",
         description: "Removing background from image",
@@ -116,6 +128,8 @@ export const handleRemoveBackground = async (deps: BackgroundHandlerDeps) => {
             ? {
                 ...img,
                 src: result.url,
+                isLoading: false,
+                loadingMessage: undefined,
                 // Remove crop values since we've applied them
                 cropX: undefined,
                 cropY: undefined,
@@ -133,6 +147,16 @@ export const handleRemoveBackground = async (deps: BackgroundHandlerDeps) => {
     });
   } catch (error) {
     console.error("Error removing background:", error);
+
+    // Remove loading state on error
+    setImages((prev) =>
+      prev.map((img) =>
+        selectedIds.includes(img.id)
+          ? { ...img, isLoading: false, loadingMessage: undefined }
+          : img,
+      ),
+    );
+
     toast({
       title: "Failed to remove background",
       description: error instanceof Error ? error.message : "Unknown error",
