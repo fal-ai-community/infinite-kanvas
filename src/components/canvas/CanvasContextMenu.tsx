@@ -24,14 +24,20 @@ import {
   ChevronDown,
   MoveUp,
   MoveDown,
+  Video,
 } from "lucide-react";
 import { SpinnerIcon } from "@/components/icons";
 import { checkOS } from "@/utils/os-utils";
-import type { PlacedImage, GenerationSettings } from "@/types/canvas";
+import type {
+  PlacedImage,
+  PlacedVideo,
+  GenerationSettings,
+} from "@/types/canvas";
 
 interface CanvasContextMenuProps {
   selectedIds: string[];
   images: PlacedImage[];
+  videos?: PlacedVideo[];
   isGenerating: boolean;
   generationSettings: GenerationSettings;
   isolateInputValue: string;
@@ -42,6 +48,7 @@ interface CanvasContextMenuProps {
   handleCombineImages: () => void;
   handleDelete: () => void;
   handleIsolate: () => void;
+  handleConvertToVideo?: (imageId: string) => void;
   setCroppingImageId: (id: string | null) => void;
   setIsolateInputValue: (value: string) => void;
   setIsolateTarget: (id: string | null) => void;
@@ -54,6 +61,7 @@ interface CanvasContextMenuProps {
 export const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
   selectedIds,
   images,
+  videos = [], // Provide a default empty array
   isGenerating,
   generationSettings,
   isolateInputValue,
@@ -64,6 +72,7 @@ export const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
   handleCombineImages,
   handleDelete,
   handleIsolate,
+  handleConvertToVideo,
   setCroppingImageId,
   setIsolateInputValue,
   setIsolateTarget,
@@ -122,6 +131,28 @@ export const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
       >
         <Scissors className="h-4 w-4" />
         Remove Background
+      </ContextMenuItem>
+      <ContextMenuItem
+        onClick={() => {
+          if (selectedIds.length === 1 && handleConvertToVideo) {
+            // Only convert images, not videos
+            const isSelectedVideo = videos?.some(
+              (v) => v.id === selectedIds[0],
+            );
+            if (!isSelectedVideo) {
+              handleConvertToVideo(selectedIds[0]);
+            }
+          }
+        }}
+        disabled={
+          selectedIds.length !== 1 ||
+          !handleConvertToVideo ||
+          videos?.some((v) => v.id === selectedIds[0])
+        }
+        className="flex items-center gap-2"
+      >
+        <Video className="h-4 w-4" />
+        Convert to Video
       </ContextMenuItem>
       <ContextMenuSub>
         <ContextMenuSubTrigger
@@ -284,10 +315,17 @@ export const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
         onClick={() => {
           selectedIds.forEach((id) => {
             const image = images.find((img) => img.id === id);
+            const video = videos?.find((vid) => vid.id === id);
+
             if (image) {
               const link = document.createElement("a");
               link.download = `image-${Date.now()}.png`;
               link.href = image.src;
+              link.click();
+            } else if (video) {
+              const link = document.createElement("a");
+              link.download = `video-${Date.now()}.mp4`;
+              link.href = video.src;
               link.click();
             }
           });

@@ -1,8 +1,9 @@
 import React from "react";
-import type { PlacedImage } from "@/types/canvas";
+import type { PlacedImage, PlacedVideo } from "@/types/canvas";
 
 interface MiniMapProps {
   images: PlacedImage[];
+  videos: PlacedVideo[];
   viewport: {
     x: number;
     y: number;
@@ -16,6 +17,7 @@ interface MiniMapProps {
 
 export const MiniMap: React.FC<MiniMapProps> = ({
   images,
+  videos,
   viewport,
   canvasSize,
 }) => {
@@ -25,12 +27,34 @@ export const MiniMap: React.FC<MiniMapProps> = ({
   let maxX = -Infinity,
     maxY = -Infinity;
 
+  // images
   images.forEach((img) => {
     minX = Math.min(minX, img.x);
     minY = Math.min(minY, img.y);
     maxX = Math.max(maxX, img.x + img.width);
     maxY = Math.max(maxY, img.y + img.height);
   });
+
+  // videos
+  videos.forEach((vid) => {
+    minX = Math.min(minX, vid.x);
+    minY = Math.min(minY, vid.y);
+    maxX = Math.max(maxX, vid.x + vid.width);
+    maxY = Math.max(maxY, vid.y + vid.height);
+  });
+
+  // If there are no elements, set default bounds
+  if (
+    minX === Infinity ||
+    minY === Infinity ||
+    maxX === -Infinity ||
+    maxY === -Infinity
+  ) {
+    minX = 0;
+    minY = 0;
+    maxX = canvasSize.width;
+    maxY = canvasSize.height;
+  }
 
   const contentWidth = maxX - minX;
   const contentHeight = maxY - minY;
@@ -59,6 +83,19 @@ export const MiniMap: React.FC<MiniMapProps> = ({
               top: `${(img.y - minY) * scale + offsetY}px`,
               width: `${img.width * scale}px`,
               height: `${img.height * scale}px`,
+            }}
+          />
+        ))}
+
+        {videos.map((vid) => (
+          <div
+            key={vid.id}
+            className="absolute bg-primary"
+            style={{
+              left: `${(vid.x - minX) * scale + offsetX}px`,
+              top: `${(vid.y - minY) * scale + offsetY}px`,
+              width: `${vid.width * scale}px`,
+              height: `${vid.height * scale}px`,
             }}
           />
         ))}
