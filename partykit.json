@@ -1,0 +1,8 @@
+{
+  "name": "infinite-kanvas",
+  "main": "party/index.ts",
+  "parties": {
+    "registry": "party/registry.ts"
+  },
+  "compatibilityDate": "2025-01-17"
+}
