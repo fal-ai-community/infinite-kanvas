@@ -5,7 +5,11 @@ import { uploadImageDirect } from "@/lib/handlers/generation-handler";
 import type { PlacedImage } from "@/types/canvas";
 import { PARTYKIT_HOST } from "@/lib/constants";
 
-import type { SyncAdapter, SyncHandlers, ViewportState } from "./types";
+import type {
+  SyncAdapter,
+  SyncHandlers,
+  ViewportState,
+} from "@/types/multiplayer";
 
 interface PartyKitAdapterOptions {
   falClient: FalClient;
@@ -16,7 +20,9 @@ interface PartyKitAdapterOptions {
     description?: string;
     variant?: "default" | "destructive";
   }) => void;
-  onConnectionStateChange?: (state: 'connected' | 'disconnected' | 'error') => void;
+  onConnectionStateChange?: (
+    state: "connected" | "disconnected" | "error",
+  ) => void;
 }
 
 // No-op implementation for single-player mode
@@ -107,7 +113,7 @@ class PartyKitSyncAdapter implements SyncAdapter {
     this.connected = true;
     this.connectionId = this.socket.id;
     console.log("[Client] PartyKit connected with ID:", this.connectionId);
-    this.options.onConnectionStateChange?.('connected');
+    this.options.onConnectionStateChange?.("connected");
   };
 
   private handleClose = (event: CloseEvent) => {
@@ -115,8 +121,8 @@ class PartyKitSyncAdapter implements SyncAdapter {
     console.log(
       `[Client] PartyKit disconnected - Code: ${event.code}, Reason: ${event.reason}`,
     );
-    
-    this.options.onConnectionStateChange?.('disconnected');
+
+    this.options.onConnectionStateChange?.("disconnected");
 
     // Try to reconnect if it was an abnormal closure
     if (event.code !== 1000 && event.code !== 1001) {
@@ -130,7 +136,7 @@ class PartyKitSyncAdapter implements SyncAdapter {
 
   private handleError = (error: Event) => {
     console.error("[Client] PartyKit error:", error);
-    this.options.onConnectionStateChange?.('error');
+    this.options.onConnectionStateChange?.("error");
   };
 
   private handleMessage = (event: MessageEvent) => {
@@ -145,10 +151,10 @@ class PartyKitSyncAdapter implements SyncAdapter {
         // Store our connection info
         this.userColor = message.data.color;
         // Add ourselves to presence
-        this.handlers.onPresenceUpdate?.({ 
-          ...message.data, 
+        this.handlers.onPresenceUpdate?.({
+          ...message.data,
           type: "join",
-          cursor: null 
+          cursor: null,
         });
         break;
       case "image:update":
@@ -161,7 +167,10 @@ class PartyKitSyncAdapter implements SyncAdapter {
         this.handlers.onImageRemove?.(message.data.imageId);
         break;
       case "viewport:change":
-        this.handlers.onViewportChange?.(message.data.userId, message.data.viewport);
+        this.handlers.onViewportChange?.(
+          message.data.userId,
+          message.data.viewport,
+        );
         break;
       case "presence:join":
         this.handlers.onPresenceUpdate?.({ ...message.data, type: "join" });
@@ -171,9 +180,9 @@ class PartyKitSyncAdapter implements SyncAdapter {
         break;
       case "cursor:move":
         // For cursor moves, only update the cursor position
-        this.handlers.onPresenceUpdate?.({ 
+        this.handlers.onPresenceUpdate?.({
           ...message.data,
-          type: "move" 
+          type: "move",
         });
         break;
       case "chat:history":
@@ -274,7 +283,9 @@ class PartyKitSyncAdapter implements SyncAdapter {
       );
 
       if (!uploadResult?.url) {
-        throw new Error(`Upload failed for image ${image.id} (size: ${image.width}x${image.height}) - no URL returned`);
+        throw new Error(
+          `Upload failed for image ${image.id} (size: ${image.width}x${image.height}) - no URL returned`,
+        );
       }
 
       return {

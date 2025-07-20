@@ -1,27 +1,16 @@
 import type * as Party from "partykit/server";
 import type { PlacedImage } from "../src/types/canvas";
+import type {
+  ViewportState,
+  PresenceData,
+  ChatMessage,
+} from "../src/types/multiplayer";
 
 const MAX_CHAT_MESSAGES = 100;
 
 interface CanvasState {
   images: PlacedImage[];
-  viewport: { x: number; y: number; scale: number };
-}
-
-interface PresenceData {
-  userId: string;
-  cursor: { x: number; y: number } | null;
-  color: string;
-  name?: string;
-}
-
-interface ChatMessage {
-  id: string;
-  userId: string;
-  name: string;
-  color: string;
-  text: string;
-  timestamp: number;
+  viewport: ViewportState;
 }
 
 export default class CanvasRoom implements Party.Server {
@@ -117,7 +106,7 @@ export default class CanvasRoom implements Party.Server {
 
       // NOW store the new connection info
       this.connections.set(connection.id, { color: userColor, name: userName });
-      
+
       // Send connection info to the user (including their color)
       connection.send(
         JSON.stringify({
@@ -175,15 +164,18 @@ export default class CanvasRoom implements Party.Server {
         const cursorUser = this.connections.get(sender.id);
         if (cursorUser) {
           // Broadcast the full user presence data
-          this.room.broadcast(JSON.stringify({
-            type: "cursor:move",
-            data: {
-              userId: sender.id,
-              cursor: event.data.cursor,
-              color: cursorUser.color,
-              name: cursorUser.name
-            }
-          }), [sender.id]);
+          this.room.broadcast(
+            JSON.stringify({
+              type: "cursor:move",
+              data: {
+                userId: sender.id,
+                cursor: event.data.cursor,
+                color: cursorUser.color,
+                name: cursorUser.name,
+              },
+            }),
+            [sender.id],
+          );
         }
         break;
 
@@ -268,11 +260,14 @@ export default class CanvasRoom implements Party.Server {
 
     // If room is empty, schedule cleanup check
     if (this.connections.size === 0) {
-      setTimeout(async () => {
-        if (this.connections.size === 0) {
-          await this.notifyRegistryForCleanup();
-        }
-      }, 5 * 60 * 1000); // 5 minute grace period
+      setTimeout(
+        async () => {
+          if (this.connections.size === 0) {
+            await this.notifyRegistryForCleanup();
+          }
+        },
+        5 * 60 * 1000,
+      ); // 5 minute grace period
     }
   }
 
@@ -305,20 +300,24 @@ export default class CanvasRoom implements Party.Server {
   private async updateRegistry() {
     try {
       // Get room metadata from storage
-      const roomInfo = await this.room.storage.get<any>("roomInfo") || {};
-      
+      const roomInfo = (await this.room.storage.get<any>("roomInfo")) || {};
+
       // Send update to registry party via WebSocket
       const host = process.env.PARTYKIT_HOST || "localhost:1999";
       const protocol = process.env.NODE_ENV === "production" ? "wss" : "ws";
-      const ws = new WebSocket(`${protocol}://${host}/parties/registry/registry`);
-      
+      const ws = new WebSocket(
+        `${protocol}://${host}/parties/registry/registry`,
+      );
+
       ws.onopen = () => {
-        ws.send(JSON.stringify({
-          type: "room-update",
-          roomId: this.room.id,
-          userCount: this.connections.size,
-          lastActivity: Date.now(),
-        }));
+        ws.send(
+          JSON.stringify({
+            type: "room-update",
+            roomId: this.room.id,
+            userCount: this.connections.size,
+            lastActivity: Date.now(),
+          }),
+        );
         ws.close();
       };
     } catch (error) {
@@ -330,12 +329,14 @@ export default class CanvasRoom implements Party.Server {
     try {
       const host = process.env.PARTYKIT_HOST || "localhost:1999";
       const ws = new WebSocket(`ws://${host}/parties/registry/registry`);
-      
+
       ws.onopen = () => {
-        ws.send(JSON.stringify({
-          type: "room-cleanup",
-          roomId: this.room.id,
-        }));
+        ws.send(
+          JSON.stringify({
+            type: "room-cleanup",
+            roomId: this.room.id,
+          }),
+        );
         ws.close();
       };
     } catch (error) {

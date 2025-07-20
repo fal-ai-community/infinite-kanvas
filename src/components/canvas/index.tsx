@@ -102,7 +102,8 @@ export default function OverlayPage({ roomId: propRoomId }: CanvasProps = {}) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isStorageLoaded, setIsStorageLoaded] = useState(false);
   const [showMultiplayerCursors, setShowMultiplayerCursors] = useState(true);
-  const [isMultiplayerPanelExpanded, setIsMultiplayerPanelExpanded] = useState(false);
+  const [isMultiplayerPanelExpanded, setIsMultiplayerPanelExpanded] =
+    useState(false);
   const simpsonsStyle = styleModels.find((m) => m.id === "simpsons");
   const { toast } = useToast();
 
@@ -186,14 +187,14 @@ export default function OverlayPage({ roomId: propRoomId }: CanvasProps = {}) {
     connectionState,
     syncAdapter,
   } = useMultiplayer(propRoomId);
-  
+
   // Debug logging
   useEffect(() => {
     console.log("[Canvas] propRoomId:", propRoomId);
     console.log("[Canvas] roomId from hook:", roomId);
     console.log("[Canvas] isMultiplayer:", isMultiplayer);
   }, [propRoomId, roomId, isMultiplayer]);
-  
+
   // Sync viewport changes
   useEffect(() => {
     if (!followingUserId) {
@@ -708,7 +709,7 @@ export default function OverlayPage({ roomId: propRoomId }: CanvasProps = {}) {
 
     const stage = stageRef.current;
     if (!stage) return;
-    
+
     // Break following if user interacts with viewport
     if (followingUserId) {
       followUser(null);
@@ -967,7 +968,7 @@ export default function OverlayPage({ roomId: propRoomId }: CanvasProps = {}) {
 
   const handleMouseMove = (e: any) => {
     const stage = e.target.getStage();
-    
+
     // Broadcast cursor position in multiplayer
     if (isMultiplayer && handleCursorMove) {
       const pointerPosition = stage.getPointerPosition();
@@ -1602,7 +1603,7 @@ export default function OverlayPage({ roomId: propRoomId }: CanvasProps = {}) {
       // Toggle multiplayer panel with Cmd+K
       if ((e.metaKey || e.ctrlKey) && e.key === "k" && !isInputElement) {
         e.preventDefault();
-        setIsMultiplayerPanelExpanded(prev => !prev);
+        setIsMultiplayerPanelExpanded((prev) => !prev);
       }
       // Undo/Redo
       else if ((e.metaKey || e.ctrlKey) && e.key === "z" && !e.shiftKey) {
@@ -1803,8 +1804,8 @@ export default function OverlayPage({ roomId: propRoomId }: CanvasProps = {}) {
       ))}
 
       {/* Multiplayer components - Always render since canvas is only used with roomId */}
-      <MultiplayerPanel 
-        onToggleCursors={setShowMultiplayerCursors} 
+      <MultiplayerPanel
+        onToggleCursors={setShowMultiplayerCursors}
         isExpanded={isMultiplayerPanelExpanded}
         onExpandChange={setIsMultiplayerPanelExpanded}
         onFollowUser={followUser}
@@ -2080,10 +2081,9 @@ export default function OverlayPage({ roomId: propRoomId }: CanvasProps = {}) {
                           );
                         })()}
                     </Layer>
-                    
                   </Stage>
                 )}
-                
+
                 {/* Multiplayer cursors overlay - outside of Konva */}
                 {showMultiplayerCursors && isMultiplayer && (
                   <MultiplayerCursors viewport={viewport} />

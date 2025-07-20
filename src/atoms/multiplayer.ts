@@ -5,7 +5,7 @@ import type {
   PresenceData,
   SyncAdapter,
   ChatMessage,
-} from "@/lib/sync/types";
+} from "@/types/multiplayer";
 
 // Base atoms for state
 export const imagesAtom = atom<PlacedImage[]>([]);
@@ -69,8 +69,19 @@ export const updatePresenceAtom = atom(
     const currentMap = get(presenceMapAtom);
     const newMap = new Map(currentMap);
     newMap.set(userId, data);
-    console.log("[atoms/multiplayer] Updated presence map:", newMap.size, "users");
-    console.log("[atoms/multiplayer] Presence map contents:", Array.from(newMap.entries()).map(([k, v]) => ({ key: k, userId: v.userId, name: v.name })));
+    console.log(
+      "[atoms/multiplayer] Updated presence map:",
+      newMap.size,
+      "users",
+    );
+    console.log(
+      "[atoms/multiplayer] Presence map contents:",
+      Array.from(newMap.entries()).map(([k, v]) => ({
+        key: k,
+        userId: v.userId,
+        name: v.name,
+      })),
+    );
     set(presenceMapAtom, newMap);
   },
 );
@@ -87,14 +98,20 @@ export const clearPresenceAtom = atom(null, (_get, set) => {
 });
 
 // Chat actions
-export const setChatMessagesAtom = atom(null, (_get, set, messages: ChatMessage[]) => {
-  set(chatMessagesAtom, messages);
-});
+export const setChatMessagesAtom = atom(
+  null,
+  (_get, set, messages: ChatMessage[]) => {
+    set(chatMessagesAtom, messages);
+  },
+);
 
-export const addChatMessageAtom = atom(null, (get, set, message: ChatMessage) => {
-  const currentMessages = get(chatMessagesAtom);
-  set(chatMessagesAtom, [...currentMessages, message]);
-});
+export const addChatMessageAtom = atom(
+  null,
+  (get, set, message: ChatMessage) => {
+    const currentMessages = get(chatMessagesAtom);
+    set(chatMessagesAtom, [...currentMessages, message]);
+  },
+);
 
 // Hook that provides similar interface to the old Zustand store
 export const useMultiplayerStore = () => {
