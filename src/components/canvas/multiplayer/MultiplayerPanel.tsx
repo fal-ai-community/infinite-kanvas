@@ -28,7 +28,7 @@ import {
 import { useMultiplayer } from "@/hooks/use-multiplayer";
 import { cn } from "@/lib/utils";
 import { Logo } from "@/components/icons";
-import type { ChatMessage } from "@/lib/sync/types";
+import type { ChatMessage } from "@/types/multiplayer";
 
 interface MultiplayerPanelProps {
   onToggleCursors?: (show: boolean) => void;
@@ -50,7 +50,8 @@ export const MultiplayerPanel: React.FC<MultiplayerPanelProps> = ({
   const [localExpanded, setLocalExpanded] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [newName, setNewName] = useState("");
-  const isExpanded = controlledExpanded !== undefined ? controlledExpanded : localExpanded;
+  const isExpanded =
+    controlledExpanded !== undefined ? controlledExpanded : localExpanded;
   const [isAnimating, setIsAnimating] = useState(false);
   const [activeTab, setActiveTab] = useState<"users" | "chat">("users");
   const [chatInput, setChatInput] = useState("");
@@ -58,7 +59,14 @@ export const MultiplayerPanel: React.FC<MultiplayerPanelProps> = ({
   const [selectedColor, setSelectedColor] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const { roomId, syncAdapter, presenceMap, images, chatMessages: hookChatMessages, sendChatMessage } = useMultiplayer();
+  const {
+    roomId,
+    syncAdapter,
+    presenceMap,
+    images,
+    chatMessages: hookChatMessages,
+    sendChatMessage,
+  } = useMultiplayer();
 
   const usersList = Array.from(presenceMap.values());
   const userCount = usersList.length;
@@ -70,7 +78,10 @@ export const MultiplayerPanel: React.FC<MultiplayerPanelProps> = ({
     console.log("[MultiplayerPanel] Users:", usersList.length);
     console.log("[MultiplayerPanel] My userId:", myUserId);
     console.log("[MultiplayerPanel] My user:", myUser?.name);
-    console.log("[MultiplayerPanel] All users:", usersList.map(u => ({ id: u.userId, name: u.name })));
+    console.log(
+      "[MultiplayerPanel] All users:",
+      usersList.map((u) => ({ id: u.userId, name: u.name })),
+    );
   }, [usersList.length, myUserId, myUser]);
 
   // Auto-scroll chat to bottom on new messages
@@ -133,7 +144,8 @@ export const MultiplayerPanel: React.FC<MultiplayerPanelProps> = ({
             className={cn(
               "flex items-center justify-between px-3 h-12",
               "bg-muted/50 border-b",
-              !isExpanded && "cursor-pointer hover:bg-muted/60 transition-colors",
+              !isExpanded &&
+                "cursor-pointer hover:bg-muted/60 transition-colors",
             )}
             onClick={() => !isExpanded && handleToggleExpand()}
           >
@@ -246,12 +258,17 @@ export const MultiplayerPanel: React.FC<MultiplayerPanelProps> = ({
                                     <div className="flex items-center gap-1">
                                       <Input
                                         value={newName}
-                                        onChange={(e) => setNewName(e.target.value)}
+                                        onChange={(e) =>
+                                          setNewName(e.target.value)
+                                        }
                                         onKeyDown={(e) => {
                                           if (e.key === "Enter") {
                                             const trimmedName = newName.trim();
                                             if (trimmedName) {
-                                              localStorage.setItem("userName", trimmedName);
+                                              localStorage.setItem(
+                                                "userName",
+                                                trimmedName,
+                                              );
                                               setEditingName(false);
                                               // Reload to apply new name
                                               window.location.reload();
@@ -306,7 +323,8 @@ export const MultiplayerPanel: React.FC<MultiplayerPanelProps> = ({
                                 className={cn(
                                   "flex items-center gap-2 p-2 rounded hover:bg-muted/50 transition-all duration-200 cursor-pointer border border-transparent",
                                   isExpanded && "opacity-0 animate-fade-in",
-                                  followingUserId === user.userId && "bg-primary/10 border-primary/20",
+                                  followingUserId === user.userId &&
+                                    "bg-primary/10 border-primary/20",
                                 )}
                                 style={
                                   isExpanded
@@ -319,7 +337,11 @@ export const MultiplayerPanel: React.FC<MultiplayerPanelProps> = ({
                                 onClick={() => {
                                   if (onFollowUser) {
                                     // Toggle follow - if already following this user, stop following
-                                    onFollowUser(followingUserId === user.userId ? null : user.userId);
+                                    onFollowUser(
+                                      followingUserId === user.userId
+                                        ? null
+                                        : user.userId,
+                                    );
                                   }
                                 }}
                               >
@@ -335,11 +357,15 @@ export const MultiplayerPanel: React.FC<MultiplayerPanelProps> = ({
                                       </span>
                                     </div>
                                     {user.cursor && (
-                                      <span className="text-xs text-muted-foreground">Active</span>
+                                      <span className="text-xs text-muted-foreground">
+                                        Active
+                                      </span>
                                     )}
                                   </div>
                                   {followingUserId === user.userId && (
-                                    <span className="text-xs text-primary font-medium">Following</span>
+                                    <span className="text-xs text-primary font-medium">
+                                      Following
+                                    </span>
                                   )}
                                 </div>
                               </div>

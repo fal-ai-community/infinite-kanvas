@@ -6,7 +6,7 @@ import { useMultiplayer } from "@/hooks/use-multiplayer";
 import { Loader } from "lucide-react";
 
 // Dynamically import the canvas to avoid SSR issues
-const Canvas = dynamic(() => import("@/components/Canvas"), {
+const Canvas = dynamic(() => import("@/components/canvas"), {
   ssr: false,
   loading: () => (
     <div className="flex items-center justify-center h-screen">
