@@ -23,6 +23,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useFalClient } from "@/hooks/useFalClient";
 import { throttle, debounce } from "@/lib/utils";
+import { BASE_DELAY_MS, BACKOFF_MULTIPLIER, MAX_BACKOFF_DELAY_MS, CURSOR_THROTTLE_MS, VIEWPORT_DEBOUNCE_MS } from "@/lib/constants";
 
 // Connection state atom
 export type ConnectionState = 'connecting' | 'connected' | 'reconnecting' | 'disconnected' | 'error';
@@ -223,7 +224,7 @@ export function useMultiplayer(roomId?: string) { // Optional to allow child com
         clearTimeout(reconnectTimeoutRef.current);
       }
 
-      const delay = Math.min(1000 * Math.pow(2, reconnectAttemptsRef.current), 30000);
+      const delay = Math.min(BASE_DELAY_MS * Math.pow(BACKOFF_MULTIPLIER, reconnectAttemptsRef.current), MAX_BACKOFF_DELAY_MS);
       reconnectAttemptsRef.current++;
 
       reconnectTimeoutRef.current = setTimeout(() => {
@@ -349,7 +350,7 @@ export function useMultiplayer(roomId?: string) { // Optional to allow child com
       if (syncAdapterRef.current && connectionStateRef.current === 'connected') {
         syncAdapterRef.current.onCursorMove(position);
       }
-    }, 16) // ~60fps
+    }, CURSOR_THROTTLE_MS) // ~60fps
   ).current;
 
   // Debounced viewport change broadcasting
@@ -358,7 +359,7 @@ export function useMultiplayer(roomId?: string) { // Optional to allow child com
       if (syncAdapterRef.current && connectionStateRef.current === 'connected') {
         syncAdapterRef.current.onViewportChange(viewport);
       }
-    }, 100)
+    }, VIEWPORT_DEBOUNCE_MS)
   ).current;
 
   // Generation event handlers

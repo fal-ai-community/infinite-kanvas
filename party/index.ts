@@ -1,6 +1,8 @@
 import type * as Party from "partykit/server";
 import type { PlacedImage } from "../src/types/canvas";
 
+const MAX_CHAT_MESSAGES = 100;
+
 interface CanvasState {
   images: PlacedImage[];
   viewport: { x: number; y: number; scale: number };
@@ -218,9 +220,9 @@ export default class CanvasRoom implements Party.Server {
             (await this.room.storage.get<ChatMessage[]>("chatMessages")) || [];
           messages.push(chatMessage);
 
-          // Keep only last 100 messages to prevent unbounded growth
-          if (messages.length > 100) {
-            messages.splice(0, messages.length - 100);
+          // Keep only last MAX_CHAT_MESSAGES to prevent unbounded growth
+          if (messages.length > MAX_CHAT_MESSAGES) {
+            messages.splice(0, messages.length - MAX_CHAT_MESSAGES);
           }
 
           await this.room.storage.put("chatMessages", messages);
@@ -307,7 +309,8 @@ export default class CanvasRoom implements Party.Server {
       
       // Send update to registry party via WebSocket
       const host = process.env.PARTYKIT_HOST || "localhost:1999";
-      const ws = new WebSocket(`ws://${host}/parties/registry/registry`);
+      const protocol = process.env.NODE_ENV === "production" ? "wss" : "ws";
+      const ws = new WebSocket(`${protocol}://${host}/parties/registry/registry`);
       
       ws.onopen = () => {
         ws.send(JSON.stringify({

@@ -11,7 +11,7 @@ export interface Room {
   creatorName?: string;
 }
 
-const PARTYKIT_HOST = process.env.NEXT_PUBLIC_PARTYKIT_HOST || "localhost:1999";
+import { PARTYKIT_HOST } from "@/lib/constants";
 
 export function useRoomRegistry() {
   const [rooms, setRooms] = useState<Room[]>([]);
