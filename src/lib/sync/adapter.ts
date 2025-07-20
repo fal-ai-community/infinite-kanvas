@@ -3,6 +3,7 @@ import PartySocket from "partysocket";
 
 import { uploadImageDirect } from "@/lib/handlers/generation-handler";
 import type { PlacedImage } from "@/types/canvas";
+import { PARTYKIT_HOST } from "@/lib/constants";
 
 import type { SyncAdapter, SyncHandlers, ViewportState } from "./types";
 
@@ -77,9 +78,7 @@ class PartyKitSyncAdapter implements SyncAdapter {
   private userColor: string | null = null;
 
   constructor(private options: PartyKitAdapterOptions) {
-    const host =
-      process.env.NEXT_PUBLIC_PARTYKIT_HOST ||
-      `${window.location.hostname}:1999`; // Dev mode
+    const host = PARTYKIT_HOST;
 
     // Get username from localStorage
     this.userName = localStorage.getItem("userName") || "Guest";
@@ -275,7 +274,7 @@ class PartyKitSyncAdapter implements SyncAdapter {
       );
 
       if (!uploadResult?.url) {
-        throw new Error("Upload failed - no URL returned");
+        throw new Error(`Upload failed for image ${image.id} (size: ${image.width}x${image.height}) - no URL returned`);
       }
 
       return {
