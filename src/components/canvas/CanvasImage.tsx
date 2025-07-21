@@ -9,7 +9,7 @@ import { throttle } from "@/utils/performance";
 interface CanvasImageProps {
   image: PlacedImage;
   isSelected: boolean;
-  onSelect: (e: any) => void;
+  onSelect: (e: Konva.KonvaEventObject<MouseEvent>) => void;
   onChange: (newAttrs: Partial<PlacedImage>) => void;
   onDragStart: () => void;
   onDragEnd: () => void;
