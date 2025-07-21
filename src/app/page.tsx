@@ -659,7 +659,7 @@ export default function OverlayPage() {
   };
 
   // Handle wheel for zoom
-  const handleWheel = (e: any) => {
+  const handleWheel = (e: Konva.KonvaEventObject<WheelEvent>) => {
     e.evt.preventDefault();
 
     const stage = stageRef.current;
@@ -711,7 +711,7 @@ export default function OverlayPage() {
   };
 
   // Touch event handlers for mobile
-  const handleTouchStart = (e: any) => {
+  const handleTouchStart = (e: Konva.KonvaEventObject<TouchEvent>) => {
     const touches = e.evt.touches;
     const stage = stageRef.current;
 
@@ -762,7 +762,7 @@ export default function OverlayPage() {
     }
   };
 
-  const handleTouchMove = (e: any) => {
+  const handleTouchMove = (e: Konva.KonvaEventObject<TouchEvent>) => {
     const touches = e.evt.touches;
 
     if (touches.length === 2 && lastTouchDistance && lastTouchCenter) {
@@ -837,14 +837,14 @@ export default function OverlayPage() {
     }
   };
 
-  const handleTouchEnd = (e: any) => {
+  const handleTouchEnd = (e: Konva.KonvaEventObject<TouchEvent>) => {
     setLastTouchDistance(null);
     setLastTouchCenter(null);
     setIsTouchingImage(false);
   };
 
   // Handle selection
-  const handleSelect = (id: string, e: any) => {
+  const handleSelect = (id: string, e: Konva.KonvaEventObject<MouseEvent>) => {
     if (e.evt.shiftKey || e.evt.metaKey || e.evt.ctrlKey) {
       setSelectedIds((prev) =>
         prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id],
@@ -855,7 +855,7 @@ export default function OverlayPage() {
   };
 
   // Handle drag selection and panning
-  const handleMouseDown = (e: any) => {
+  const handleMouseDown = (e: Konva.KonvaEventObject<MouseEvent>) => {
     const clickedOnEmpty = e.target === e.target.getStage();
     const stage = e.target.getStage();
     const mouseButton = e.evt.button; // 0 = left, 1 = middle, 2 = right
@@ -883,7 +883,7 @@ export default function OverlayPage() {
 
     // Start selection box when left-clicking on empty space
     if (clickedOnEmpty && !croppingImageId && mouseButton === 0) {
-      const pos = stage.getPointerPosition();
+      const pos = stage?.getPointerPosition();
       if (pos) {
         // Convert screen coordinates to canvas coordinates
         const canvasPos = {
@@ -904,7 +904,7 @@ export default function OverlayPage() {
     }
   };
 
-  const handleMouseMove = (e: any) => {
+  const handleMouseMove = (e: Konva.KonvaEventObject<MouseEvent>) => {
     const stage = e.target.getStage();
 
     // Handle canvas panning with middle mouse
@@ -925,7 +925,7 @@ export default function OverlayPage() {
     // Handle selection
     if (!isSelecting) return;
 
-    const pos = stage.getPointerPosition();
+    const pos = stage?.getPointerPosition();
     if (pos) {
       // Convert screen coordinates to canvas coordinates
       const canvasPos = {
@@ -941,7 +941,7 @@ export default function OverlayPage() {
     }
   };
 
-  const handleMouseUp = (e: any) => {
+  const handleMouseUp = (e: Konva.KonvaEventObject<MouseEvent>) => {
     // Stop canvas panning
     if (isPanningCanvas) {
       setIsPanningCanvas(false);
@@ -1779,8 +1779,8 @@ export default function OverlayPage() {
                       e.evt?.preventDefault();
                     }}
                     onMouseDown={handleMouseDown}
-                    onMousemove={handleMouseMove}
-                    onMouseup={handleMouseUp}
+                    onMouseMove={handleMouseMove}
+                    onMouseUp={handleMouseUp}
                     onMouseLeave={() => {
                       // Stop panning if mouse leaves the stage
                       if (isPanningCanvas) {
