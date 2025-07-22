@@ -360,10 +360,77 @@ export default function OverlayPage() {
     };
   }, []);
 
-  // Load from storage on mount
+  // Load from storage on mount and check for selected library
   useEffect(() => {
     loadFromStorage();
-  }, [loadFromStorage]);
+
+    // Check if there's a selected library from the libraries page
+    const selectedLibraryJson = localStorage.getItem("selected-library");
+    if (selectedLibraryJson) {
+      try {
+        const selectedLibrary = JSON.parse(selectedLibraryJson);
+
+        // Add library elements to canvas
+        if (selectedLibrary.elements && selectedLibrary.elements.length > 0) {
+          // Convert library elements to canvas elements
+          const newImages: PlacedImage[] = [];
+
+          // Position elements in a grid layout at the center of the viewport
+          const elementsPerRow = Math.min(3, selectedLibrary.elements.length);
+          const elementSize = 150;
+          const spacing = 20;
+          const totalWidth =
+            elementsPerRow * elementSize + (elementsPerRow - 1) * spacing;
+
+          // Calculate starting position (center of viewport)
+          const viewportCenterX =
+            (canvasSize.width / 2 - viewport.x) / viewport.scale;
+          const viewportCenterY =
+            (canvasSize.height / 2 - viewport.y) / viewport.scale;
+          const startX = viewportCenterX - totalWidth / 2;
+          const startY = viewportCenterY - elementSize / 2;
+
+          // Create canvas elements from library elements
+          selectedLibrary.elements.forEach((element: any, index: number) => {
+            const row = Math.floor(index / elementsPerRow);
+            const col = index % elementsPerRow;
+
+            const x = startX + col * (elementSize + spacing);
+            const y = startY + row * (elementSize + spacing);
+
+            // Create a new image element
+            newImages.push({
+              id: `lib-${element.id}-${Date.now()}`,
+              src: element.thumbnailUrl,
+              x,
+              y,
+              width: elementSize,
+              height: elementSize,
+              rotation: 0,
+            });
+          });
+
+          // Add new images to canvas
+          if (newImages.length > 0) {
+            setImages((prev) => [...prev, ...newImages]);
+
+            // Save to history
+            saveToHistory();
+
+            toast({
+              title: `Added ${selectedLibrary.title} to canvas`,
+              description: `${newImages.length} elements added to your canvas`,
+            });
+          }
+        }
+
+        // Clear the selected library from localStorage
+        localStorage.removeItem("selected-library");
+      } catch (error) {
+        console.error("Failed to parse selected library:", error);
+      }
+    }
+  }, [loadFromStorage, toast]);
 
   // Auto-save to storage when images change (with debounce)
   useEffect(() => {
@@ -2090,6 +2157,37 @@ export default function OverlayPage() {
                     variant="secondary"
                     size="sm"
                     onClick={async () => {
+                      // Check if there are unsaved changes
+                      const hasUnsavedChanges =
+                        historyIndex < history.length - 1;
+
+                      if (hasUnsavedChanges) {
+                        // Ask for confirmation before navigating
+                        const confirmed = window.confirm(
+                          "You have unsaved changes. Are you sure you want to navigate away? Your changes will be saved automatically.",
+                        );
+
+                        if (!confirmed) {
+                          return;
+                        }
+                      }
+
+                      // Save current canvas state before navigating
+                      await saveToStorage();
+                      // Save navigation state with destination
+                      canvasStorage.saveNavigationState("/libraries");
+                      window.location.href = "/libraries";
+                    }}
+                    className="h-8 px-2 gap-1"
+                    title="Libraries"
+                  >
+                    <Star className="h-4 w-4" />
+                    <span className="text-xs">Libraries</span>
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={async () => {
                       if (
                         confirm("Clear all saved data? This cannot be undone.")
                       ) {
@@ -2446,6 +2544,7 @@ export default function OverlayPage() {
 
           {/* Dimension display for selected images */}
           <DimensionDisplay
+            key={selectedIds.join(",")}
             selectedImages={images.filter((img) =>
               selectedIds.includes(img.id),
             )}
