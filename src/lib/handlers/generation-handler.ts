@@ -106,6 +106,8 @@ export const generateImage = (
       rotation: 0,
       isGenerated: true,
       parentGroupId: groupId,
+      isLoading: true,
+      loadingMessage: "Generating image...",
     },
   ]);
 
