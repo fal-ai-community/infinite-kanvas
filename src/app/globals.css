@@ -278,3 +278,20 @@ h6 {
 .animate-logo-spin {
   animation: logo-spin 2s linear infinite;
 }
+
+/* Safari-specific select styling fixes for video modal */
+@supports (-webkit-appearance: none) {
+  select.safari-select {
+    -webkit-appearance: none;
+    line-height: 1.5 !important;
+    padding-top: 0.5rem !important;
+    padding-bottom: 0.5rem !important;
+    height: auto !important;
+  }
+  
+  /* Fix option text in Safari dropdowns */
+  select.safari-select option {
+    line-height: 1.5 !important;
+    padding: 0.25rem 0 !important;
+  }
+}

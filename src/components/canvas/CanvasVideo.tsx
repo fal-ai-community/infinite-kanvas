@@ -1,4 +1,10 @@
-import React, { useRef, useState, useEffect } from "react";
+import React, {
+  useRef,
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+} from "react";
 import {
   Image as KonvaImage,
   Transformer,
@@ -8,6 +14,7 @@ import {
 } from "react-konva";
 import Konva from "konva";
 import type { PlacedVideo } from "@/types/canvas";
+import { throttle } from "@/utils/performance";
 
 interface CanvasVideoProps {
   video: PlacedVideo;
@@ -56,6 +63,7 @@ export const CanvasVideo: React.FC<CanvasVideoProps> = ({
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
   // isResizing is used to track resize state for internal component logic
   const [isResizing, setIsResizing] = useState(false);
+  const lastUpdateTime = useRef<number>(0);
 
   // Create and set up the video element when the component mounts or video src changes
   useEffect(() => {
@@ -66,6 +74,11 @@ export const CanvasVideo: React.FC<CanvasVideoProps> = ({
     videoEl.volume = video.volume;
     videoEl.currentTime = video.currentTime;
     videoEl.loop = !!video.isLooping; // Set loop property based on video state
+
+    // Performance optimizations
+    videoEl.preload = "auto"; // Need auto to ensure first frame loads
+    videoEl.playsInline = true; // Prevent fullscreen on mobile
+    videoEl.disablePictureInPicture = true; // Prevent UI conflicts
 
     // Set up event listeners
     videoEl.addEventListener("loadedmetadata", () => {
@@ -88,8 +101,11 @@ export const CanvasVideo: React.FC<CanvasVideoProps> = ({
     });
 
     videoEl.addEventListener("timeupdate", () => {
-      // Only update the stored currentTime occasionally to avoid excessive state updates
-      if (Math.abs(videoEl.currentTime - video.currentTime) > 0.5) {
+      // Only update if enough time has passed to avoid excessive updates
+      const now = Date.now();
+      if (now - lastUpdateTime.current > 100) {
+        // 100ms throttle for smooth playback
+        lastUpdateTime.current = now;
         onChange({ currentTime: videoEl.currentTime });
       }
     });
@@ -100,6 +116,12 @@ export const CanvasVideo: React.FC<CanvasVideoProps> = ({
       if (!video.isLooping) {
         onChange({ isPlaying: false, currentTime: 0 });
       }
+    });
+
+    // Ensure video has loaded enough data to display
+    videoEl.addEventListener("loadeddata", () => {
+      // Force a re-render when video data is available
+      setVideoElement(videoEl);
     });
 
     // Set the video element in state
@@ -115,7 +137,7 @@ export const CanvasVideo: React.FC<CanvasVideoProps> = ({
       videoEl.removeAttribute("src");
       videoEl.load();
     };
-  }, [video.src]);
+  }, [video.src]); // Remove debouncedTimeUpdate from deps
 
   // Handle play/pause state changes
   useEffect(() => {
@@ -143,7 +165,8 @@ export const CanvasVideo: React.FC<CanvasVideoProps> = ({
     if (!videoElement) return;
 
     // Only seek if the difference is significant to avoid loops
-    if (Math.abs(videoElement.currentTime - video.currentTime) > 0.5) {
+    // Increased threshold to prevent interference with playback
+    if (Math.abs(videoElement.currentTime - video.currentTime) > 2) {
       videoElement.currentTime = video.currentTime;
     }
   }, [video.currentTime, videoElement]);
@@ -317,49 +340,53 @@ export const CanvasVideo: React.FC<CanvasVideoProps> = ({
           }
           onDragStart();
         }}
-        onDragMove={(e) => {
-          const node = e.target;
+        onDragMove={useMemo(
+          () =>
+            throttle((e: any) => {
+              const node = e.target;
 
-          if (selectedIds.includes(video.id) && selectedIds.length > 1) {
-            // Calculate delta from drag start position
-            const startPos = dragStartPositions.get(video.id);
-            if (startPos) {
-              const deltaX = node.x() - startPos.x;
-              const deltaY = node.y() - startPos.y;
+              if (selectedIds.includes(video.id) && selectedIds.length > 1) {
+                // Calculate delta from drag start position
+                const startPos = dragStartPositions.get(video.id);
+                if (startPos) {
+                  const deltaX = node.x() - startPos.x;
+                  const deltaY = node.y() - startPos.y;
 
-              // Update all selected items relative to their start positions
-              setVideos((prev) =>
-                prev.map((vid) => {
-                  if (vid.id === video.id) {
-                    return {
-                      ...vid,
-                      x: node.x(),
-                      y: node.y(),
-                      isVideo: true as const,
-                    };
-                  } else if (selectedIds.includes(vid.id)) {
-                    const vidStartPos = dragStartPositions.get(vid.id);
-                    if (vidStartPos) {
-                      return {
-                        ...vid,
-                        x: vidStartPos.x + deltaX,
-                        y: vidStartPos.y + deltaY,
-                        isVideo: true as const,
-                      };
-                    }
-                  }
-                  return vid;
-                }),
-              );
-            }
-          } else {
-            // Single item drag - just update this video
-            onChange({
-              x: node.x(),
-              y: node.y(),
-            });
-          }
-        }}
+                  // Update all selected items relative to their start positions
+                  setVideos((prev) =>
+                    prev.map((vid) => {
+                      if (vid.id === video.id) {
+                        return {
+                          ...vid,
+                          x: node.x(),
+                          y: node.y(),
+                          isVideo: true as const,
+                        };
+                      } else if (selectedIds.includes(vid.id)) {
+                        const vidStartPos = dragStartPositions.get(vid.id);
+                        if (vidStartPos) {
+                          return {
+                            ...vid,
+                            x: vidStartPos.x + deltaX,
+                            y: vidStartPos.y + deltaY,
+                            isVideo: true as const,
+                          };
+                        }
+                      }
+                      return vid;
+                    }),
+                  );
+                }
+              } else {
+                // Single item drag - just update this video
+                onChange({
+                  x: node.x(),
+                  y: node.y(),
+                });
+              }
+            }, 16), // ~60fps throttle
+          [selectedIds, video.id, dragStartPositions, setVideos, onChange],
+        )}
         onDragEnd={() => {
           onDragEnd();
         }}

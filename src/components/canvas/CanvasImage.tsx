@@ -1,9 +1,10 @@
-import React, { useRef, useState, useEffect } from "react";
+import React, { useRef, useState, useEffect, useMemo } from "react";
 import { Image as KonvaImage, Transformer } from "react-konva";
 import Konva from "konva";
 import useImage from "use-image";
 import { useStreamingImage } from "@/hooks/useStreamingImage";
 import type { PlacedImage } from "@/types/canvas";
+import { throttle } from "@/utils/performance";
 
 interface CanvasImageProps {
   image: PlacedImage;
@@ -110,42 +111,46 @@ export const CanvasImage: React.FC<CanvasImageProps> = ({
           }
           onDragStart();
         }}
-        onDragMove={(e) => {
-          const node = e.target;
+        onDragMove={useMemo(
+          () =>
+            throttle((e: any) => {
+              const node = e.target;
 
-          if (selectedIds.includes(image.id) && selectedIds.length > 1) {
-            // Calculate delta from drag start position
-            const startPos = dragStartPositions.get(image.id);
-            if (startPos) {
-              const deltaX = node.x() - startPos.x;
-              const deltaY = node.y() - startPos.y;
+              if (selectedIds.includes(image.id) && selectedIds.length > 1) {
+                // Calculate delta from drag start position
+                const startPos = dragStartPositions.get(image.id);
+                if (startPos) {
+                  const deltaX = node.x() - startPos.x;
+                  const deltaY = node.y() - startPos.y;
 
-              // Update all selected items relative to their start positions
-              setImages((prev) =>
-                prev.map((img) => {
-                  if (img.id === image.id) {
-                    return { ...img, x: node.x(), y: node.y() };
-                  } else if (selectedIds.includes(img.id)) {
-                    const imgStartPos = dragStartPositions.get(img.id);
-                    if (imgStartPos) {
-                      return {
-                        ...img,
-                        x: imgStartPos.x + deltaX,
-                        y: imgStartPos.y + deltaY,
-                      };
-                    }
-                  }
-                  return img;
-                }),
-              );
-            }
-          } else {
-            onChange({
-              x: node.x(),
-              y: node.y(),
-            });
-          }
-        }}
+                  // Update all selected items relative to their start positions
+                  setImages((prev) =>
+                    prev.map((img) => {
+                      if (img.id === image.id) {
+                        return { ...img, x: node.x(), y: node.y() };
+                      } else if (selectedIds.includes(img.id)) {
+                        const imgStartPos = dragStartPositions.get(img.id);
+                        if (imgStartPos) {
+                          return {
+                            ...img,
+                            x: imgStartPos.x + deltaX,
+                            y: imgStartPos.y + deltaY,
+                          };
+                        }
+                      }
+                      return img;
+                    }),
+                  );
+                }
+              } else {
+                onChange({
+                  x: node.x(),
+                  y: node.y(),
+                });
+              }
+            }, 16), // ~60fps throttle, prevents Safari console errors
+          [selectedIds, image.id, dragStartPositions, setImages, onChange],
+        )}
         onDragEnd={(e) => {
           onDragEnd();
         }}

@@ -37,7 +37,12 @@ export const VideoModelSelector: React.FC<VideoModelSelectorProps> = ({
 
   return (
     <select
-      className={`w-full p-2 border border-gray-300 rounded-md bg-white text-base focus:outline-none focus:ring-1 focus:ring-blue-500 ${className}`}
+      className={`w-full p-2 border border-gray-300 rounded-md bg-white text-base focus:outline-none focus:ring-1 focus:ring-blue-500 safari-select ${className}`}
+      style={{
+        lineHeight: "1.5",
+        paddingTop: "0.5rem",
+        paddingBottom: "0.5rem",
+      }}
       value={value}
       onChange={(e) => onChange(e.target.value)}
       disabled={disabled}
@@ -177,7 +182,12 @@ export const VideoModelOptions: React.FC<VideoModelOptionsProps> = ({
             <div className="relative mt-1">
               <select
                 id={key}
-                className="w-full p-2 border border-gray-300 rounded-md bg-white appearance-none focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full p-2 border border-gray-300 rounded-md bg-white appearance-none focus:outline-none focus:ring-1 focus:ring-blue-500 safari-select"
+                style={{
+                  lineHeight: "1.5",
+                  paddingTop: "0.5rem",
+                  paddingBottom: "0.5rem",
+                }}
                 value={value}
                 onChange={(e) => onChange(key, e.target.value)}
                 disabled={disabled}
