@@ -299,7 +299,14 @@ export const VideoModelOptions: React.FC<VideoModelOptionsProps> = ({
                   } else {
                     const num = parseFloat(e.target.value);
                     if (!isNaN(num)) {
-                      onChange(key, num);
+                      // Special handling for startFrameNum - must be multiple of 8
+                      if (key === "startFrameNum" && num % 8 !== 0) {
+                        // Round to nearest multiple of 8
+                        const rounded = Math.round(num / 8) * 8;
+                        onChange(key, rounded);
+                      } else {
+                        onChange(key, num);
+                      }
                     }
                   }
                 }}
@@ -310,6 +317,11 @@ export const VideoModelOptions: React.FC<VideoModelOptionsProps> = ({
                 className="flex-1"
                 required={option.required}
               />
+              {key === "startFrameNum" && value % 8 !== 0 && (
+                <span className="ml-2 text-xs text-orange-600">
+                  Will be rounded to {Math.round(value / 8) * 8}
+                </span>
+              )}
               {key === "seed" && (
                 <Button
                   type="button"

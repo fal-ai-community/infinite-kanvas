@@ -61,6 +61,7 @@ import { CanvasVideo } from "@/components/canvas/CanvasVideo";
 import { VideoControls } from "@/components/canvas/VideoControls";
 import { ImageToVideoDialog } from "@/components/canvas/ImageToVideoDialog";
 import { VideoToVideoDialog } from "@/components/canvas/VideoToVideoDialog";
+import { ExtendVideoDialog } from "@/components/canvas/ExtendVideoDialog";
 
 // Import types
 import type {
@@ -174,6 +175,11 @@ export default function OverlayPage() {
     string | null
   >(null);
   const [isTransformingVideo, setIsTransformingVideo] = useState(false);
+  const [isExtendVideoDialogOpen, setIsExtendVideoDialogOpen] = useState(false);
+  const [selectedVideoForExtend, setSelectedVideoForExtend] = useState<
+    string | null
+  >(null);
+  const [isExtendingVideo, setIsExtendingVideo] = useState(false);
   const [customApiKey, setCustomApiKey] = useState<string>("");
   const [tempApiKey, setTempApiKey] = useState<string>("");
   const [_, setIsSaving] = useState(false);
@@ -385,6 +391,99 @@ export default function OverlayPage() {
     }
   };
 
+  // Function to handle the "Extend Video" option in the context menu
+  const handleExtendVideo = (videoId: string) => {
+    const video = videos.find((vid) => vid.id === videoId);
+    if (!video) return;
+
+    setSelectedVideoForExtend(videoId);
+    setIsExtendVideoDialogOpen(true);
+  };
+
+  // Function to handle the video extension
+  const handleVideoExtension = async (settings: VideoGenerationSettings) => {
+    if (!selectedVideoForExtend) return;
+
+    const video = videos.find((vid) => vid.id === selectedVideoForExtend);
+    if (!video) return;
+
+    try {
+      setIsExtendingVideo(true);
+
+      // Upload video if it's a data URL or local file
+      let videoUrl = video.src;
+      if (videoUrl.startsWith("data:") || videoUrl.startsWith("blob:")) {
+        const uploadResult = await falClient.storage.upload(
+          await (await fetch(videoUrl)).blob(),
+        );
+        videoUrl = uploadResult;
+      }
+
+      // Create a unique ID for this generation
+      const generationId = `vid_ext_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+
+      // Add to active generations
+      setActiveVideoGenerations((prev) => {
+        const newMap = new Map(prev);
+        newMap.set(generationId, {
+          imageUrl: videoUrl, // Using imageUrl field for video URL
+          prompt: settings.prompt || "Continue the video...",
+          duration: video.duration || settings.duration || 5,
+          modelId: settings.modelId || "ltx-video-multiconditioning",
+          resolution: settings.resolution || "720p",
+          isVideoToVideo: true,
+          isVideoExtension: true,
+          sourceVideoId: selectedVideoForExtend,
+          ...settings, // Include all other settings
+        });
+        return newMap;
+      });
+
+      // Close the dialog
+      setIsExtendVideoDialogOpen(false);
+
+      // Get video model name for toast display
+      let modelName = "Video Model";
+      const modelId = settings.modelId || "ltx-video-multiconditioning";
+      const { getVideoModelById } = await import("@/lib/video-models");
+      const model = getVideoModelById(modelId);
+      if (model) {
+        modelName = model.name;
+      }
+
+      // Create a persistent toast
+      const toastId = toast({
+        title: `Extending video (${modelName} - ${settings.resolution || "Default"})`,
+        description: "This may take a minute...",
+        duration: Infinity,
+      }).id;
+
+      // Store the toast ID with the generation
+      setActiveVideoGenerations((prev) => {
+        const newMap = new Map(prev);
+        const generation = newMap.get(generationId);
+        if (generation) {
+          newMap.set(generationId, {
+            ...generation,
+            toastId,
+          });
+        }
+        return newMap;
+      });
+    } catch (error) {
+      console.error("Error starting video extension:", error);
+      toast({
+        title: "Extension failed",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Failed to start video extension",
+        variant: "destructive",
+      });
+      setIsExtendingVideo(false);
+    }
+  };
+
   // Function to handle video generation completion
   const handleVideoGenerationComplete = async (
     videoId: string,
@@ -440,9 +539,12 @@ export default function OverlayPage() {
           });
         }
       } else if (generation?.sourceVideoId || generation?.isVideoToVideo) {
-        // This was a video-to-video transformation
+        // This was a video-to-video transformation or extension
         const sourceVideoId =
-          generation?.sourceVideoId || selectedVideoForVideo;
+          generation?.sourceVideoId ||
+          selectedVideoForVideo ||
+          selectedVideoForExtend;
+        const isExtension = generation?.isVideoExtension;
 
         if (sourceVideoId) {
           const sourceVideo = videos.find((vid) => vid.id === sourceVideoId);
@@ -473,11 +575,19 @@ export default function OverlayPage() {
             // Save to history
             saveToHistory();
 
-            toast({
-              title: "Video transformed successfully",
-              description:
-                "The transformed video has been added to the right of the source video.",
-            });
+            if (isExtension) {
+              toast({
+                title: "Video extended successfully",
+                description:
+                  "The extended video has been added to the right of the source video.",
+              });
+            } else {
+              toast({
+                title: "Video transformed successfully",
+                description:
+                  "The transformed video has been added to the right of the source video.",
+              });
+            }
           } else {
             console.error("Source video not found:", sourceVideoId);
             toast({
@@ -488,9 +598,11 @@ export default function OverlayPage() {
           }
         }
 
-        // Reset the transformation state
+        // Reset the transformation/extension state
         setIsTransformingVideo(false);
         setSelectedVideoForVideo(null);
+        setIsExtendingVideo(false);
+        setSelectedVideoForExtend(null);
       } else {
         // This was a text-to-video generation
         // For now, just log it as the placement function is missing
@@ -2585,6 +2697,7 @@ export default function OverlayPage() {
               handleIsolate={handleIsolate}
               handleConvertToVideo={handleConvertToVideo}
               handleVideoToVideo={handleVideoToVideo}
+              handleExtendVideo={handleExtendVideo}
               setCroppingImageId={setCroppingImageId}
               setIsolateInputValue={setIsolateInputValue}
               setIsolateTarget={setIsolateTarget}
@@ -3247,6 +3360,21 @@ export default function OverlayPage() {
             : ""
         }
         isConverting={isTransformingVideo}
+      />
+
+      <ExtendVideoDialog
+        isOpen={isExtendVideoDialogOpen}
+        onClose={() => {
+          setIsExtendVideoDialogOpen(false);
+          setSelectedVideoForExtend(null);
+        }}
+        onExtend={handleVideoExtension}
+        videoUrl={
+          selectedVideoForExtend
+            ? videos.find((vid) => vid.id === selectedVideoForExtend)?.src || ""
+            : ""
+        }
+        isExtending={isExtendingVideo}
       />
 
       {/* Video Generation Streaming Components */}

@@ -25,6 +25,7 @@ import {
   MoveUp,
   MoveDown,
   Video,
+  FilePlus,
 } from "lucide-react";
 import { SpinnerIcon } from "@/components/icons";
 import { checkOS } from "@/utils/os-utils";
@@ -50,6 +51,7 @@ interface CanvasContextMenuProps {
   handleIsolate: () => void;
   handleConvertToVideo?: (imageId: string) => void;
   handleVideoToVideo?: (videoId: string) => void;
+  handleExtendVideo?: (videoId: string) => void;
   setCroppingImageId: (id: string | null) => void;
   setIsolateInputValue: (value: string) => void;
   setIsolateTarget: (id: string | null) => void;
@@ -75,6 +77,7 @@ export const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
   handleIsolate,
   handleConvertToVideo,
   handleVideoToVideo,
+  handleExtendVideo,
   setCroppingImageId,
   setIsolateInputValue,
   setIsolateTarget,
@@ -147,6 +150,7 @@ export const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
             Image to Video
           </ContextMenuItem>
         )}
+      {/* Temporarily disabled Video to Video option
       {selectedIds.length === 1 &&
         handleVideoToVideo &&
         videos?.some((v) => v.id === selectedIds[0]) && (
@@ -158,6 +162,19 @@ export const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
           >
             <Video className="h-4 w-4" />
             Video to Video
+          </ContextMenuItem>
+        )} */}
+      {selectedIds.length === 1 &&
+        handleExtendVideo &&
+        videos?.some((v) => v.id === selectedIds[0]) && (
+          <ContextMenuItem
+            onClick={() => {
+              handleExtendVideo(selectedIds[0]);
+            }}
+            className="flex items-center gap-2"
+          >
+            <FilePlus className="h-4 w-4" />
+            Extend Video
           </ContextMenuItem>
         )}
       <ContextMenuSub>

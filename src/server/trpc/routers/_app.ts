@@ -210,9 +210,72 @@ export const appRouter = router({
           const model = getVideoModelById(input.modelId);
           if (model) {
             // Map our generic field names to model-specific field names
-            if (model.id === "ltx-video-multiconditioning") {
+            if (model.id === "ltx-video-extend") {
+              // Use the dedicated extend endpoint format
+              let startFrame = (input as any).startFrameNum ?? 32;
+
+              // Ensure startFrame is a multiple of 8
+              if (startFrame % 8 !== 0) {
+                // Round to nearest multiple of 8
+                startFrame = Math.round(startFrame / 8) * 8;
+                console.log(
+                  `Adjusted start frame from ${(input as any).startFrameNum} to ${startFrame} (must be multiple of 8)`,
+                );
+              }
+
+              inputParams = {
+                video: {
+                  video_url: input.imageUrl, // imageUrl contains the video URL for extension
+                  // Use the validated startFrame (already defaulted and rounded)
+                  start_frame_num: startFrame,
+                  reverse_video:
+                    (input as any).reverseVideoConditioning ?? false,
+                  limit_num_frames: (input as any).limitNumFrames ?? false,
+                  resample_fps: (input as any).resampleFps ?? false,
+                  strength: (input as any).strength ?? 1,
+                  target_fps: (input as any).targetFps ?? 30,
+                  max_num_frames: (input as any).maxNumFrames ?? 121,
+                  conditioning_type: (input as any).conditioningType ?? "rgb",
+                  preprocess: (input as any).preprocess ?? false,
+                },
+                prompt: input.prompt || model.defaults.prompt,
+                negative_prompt:
+                  (input as any).negativePrompt ||
+                  model.defaults.negativePrompt,
+                resolution: input.resolution || model.defaults.resolution,
+                aspect_ratio:
+                  (input as any).aspectRatio || model.defaults.aspectRatio,
+                num_frames:
+                  (input as any).numFrames || model.defaults.numFrames,
+                first_pass_num_inference_steps:
+                  (input as any).firstPassNumInferenceSteps || 30,
+                first_pass_skip_final_steps:
+                  (input as any).firstPassSkipFinalSteps || 3,
+                second_pass_num_inference_steps:
+                  (input as any).secondPassNumInferenceSteps || 30,
+                second_pass_skip_initial_steps:
+                  (input as any).secondPassSkipInitialSteps || 17,
+                frame_rate:
+                  (input as any).frameRate || model.defaults.frameRate,
+                expand_prompt:
+                  (input as any).expandPrompt ?? model.defaults.expandPrompt,
+                reverse_video:
+                  (input as any).reverseVideo ?? model.defaults.reverseVideo,
+                enable_safety_checker:
+                  (input as any).enableSafetyChecker ??
+                  model.defaults.enableSafetyChecker,
+                constant_rate_factor:
+                  (input as any).constantRateFactor ||
+                  model.defaults.constantRateFactor,
+                seed:
+                  input.seed !== undefined && input.seed !== -1
+                    ? input.seed
+                    : undefined,
+              };
+            } else if (model.id === "ltx-video-multiconditioning") {
               // Handle multiconditioning model with support for video-to-video
               const isVideoToVideo = (input as any).isVideoToVideo;
+              const isVideoExtension = (input as any).isVideoExtension;
 
               inputParams = {
                 prompt: input.prompt || "",
@@ -256,13 +319,41 @@ export const appRouter = router({
 
               // Add image or video conditioning based on the type
               if (isVideoToVideo) {
-                inputParams.videos = [
-                  {
-                    video_url: input.imageUrl, // imageUrl contains the video URL
-                    start_frame_num: 0,
-                    end_frame_num: -1, // Use all frames
-                  },
-                ];
+                if (isVideoExtension) {
+                  // For video extension, use conditioning that focuses on the end of the video
+                  inputParams.videos = [
+                    {
+                      video_url: input.imageUrl, // imageUrl contains the video URL
+                      conditioning_type: "rgb",
+                      preprocess: true,
+                      start_frame_num: 24, // Use frames from near the end
+                      strength: 1,
+                      limit_num_frames: true,
+                      max_num_frames: 121,
+                      resample_fps: true,
+                      target_fps: 30,
+                      reverse_video: false,
+                    },
+                  ];
+                  // Modify prompt to indicate continuation
+                  if (
+                    inputParams.prompt &&
+                    !inputParams.prompt.toLowerCase().includes("continue") &&
+                    !inputParams.prompt.toLowerCase().includes("extend")
+                  ) {
+                    inputParams.prompt =
+                      "Continue this video naturally. " + inputParams.prompt;
+                  }
+                } else {
+                  // Regular video-to-video transformation
+                  inputParams.videos = [
+                    {
+                      video_url: input.imageUrl, // imageUrl contains the video URL
+                      start_frame_num: 0,
+                      end_frame_num: -1, // Use all frames
+                    },
+                  ];
+                }
               } else {
                 inputParams.images = [
                   {
@@ -325,10 +416,53 @@ export const appRouter = router({
           };
         }
 
-        console.log(`Calling ${modelEndpoint} with parameters:`, inputParams);
-        const result = await falClient.subscribe(modelEndpoint, {
-          input: inputParams,
-        });
+        console.log(
+          `Calling ${modelEndpoint} with parameters:`,
+          JSON.stringify(inputParams, null, 2),
+        );
+
+        let result;
+        try {
+          result = await falClient.subscribe(modelEndpoint, {
+            input: inputParams,
+          });
+        } catch (apiError: any) {
+          console.error("FAL API Error Details:", {
+            message: apiError.message,
+            status: apiError.status,
+            statusText: apiError.statusText,
+            body: apiError.body,
+            response: apiError.response,
+            data: apiError.data,
+            // Log the exact parameters that were sent
+            sentParameters: inputParams,
+            endpoint: modelEndpoint,
+          });
+
+          // Log specific validation errors if available
+          if (apiError.body?.detail) {
+            console.error("Validation error details:", apiError.body.detail);
+          }
+
+          // Re-throw with more context
+          if (
+            apiError.status === 422 ||
+            apiError.message?.includes("Unprocessable Entity")
+          ) {
+            let errorDetail =
+              apiError.body?.detail ||
+              apiError.message ||
+              "Please check the video format and parameters";
+            // If errorDetail is an object, stringify it
+            if (typeof errorDetail === "object") {
+              errorDetail = JSON.stringify(errorDetail);
+            }
+            throw new Error(
+              `Invalid parameters for ${modelEndpoint}: ${errorDetail}`,
+            );
+          }
+          throw apiError;
+        }
 
         // Yield progress update
         yield tracked(`${generationId}_progress`, {

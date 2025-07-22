@@ -34,7 +34,8 @@ export interface VideoModelConfig {
     | "text-to-video"
     | "image-to-video"
     | "video-to-video"
-    | "multiconditioning";
+    | "multiconditioning"
+    | "video-extension";
   pricing: VideoModelPricing;
   options: Record<string, VideoModelOption>;
   defaults: Record<string, any>;
@@ -484,6 +485,268 @@ export const VIDEO_MODELS: Record<string, VideoModelConfig> = {
       constantRateFactor: 35,
     },
   },
+  "ltx-video-extend": {
+    id: "ltx-video-extend",
+    name: "LTX Video Extend",
+    endpoint: "fal-ai/ltx-video-13b-dev/extend",
+    category: "video-extension",
+    pricing: {
+      costPerVideo: 0.2,
+      currency: "USD",
+      unit: "extension",
+    },
+    isDefault: true,
+    options: {
+      prompt: {
+        name: "prompt",
+        type: "text",
+        label: "Prompt",
+        description: "Text prompt to guide the video extension",
+        placeholder: "Continue the video naturally...",
+        required: true,
+      },
+      negativePrompt: {
+        name: "negativePrompt",
+        type: "text",
+        label: "Negative Prompt",
+        description: "What to avoid in the generation",
+        default:
+          "worst quality, inconsistent motion, blurry, jittery, distorted",
+        placeholder: "worst quality, inconsistent motion...",
+      },
+      aspectRatio: {
+        name: "aspectRatio",
+        type: "select",
+        label: "Aspect Ratio",
+        description: "The aspect ratio of the extended video",
+        default: "auto",
+        options: [
+          { value: "auto", label: "Auto (from source)" },
+          { value: "9:16", label: "9:16 (Portrait)" },
+          { value: "1:1", label: "1:1 (Square)" },
+          { value: "16:9", label: "16:9 (Landscape)" },
+        ],
+      },
+      resolution: {
+        name: "resolution",
+        type: "select",
+        label: "Resolution",
+        description: "Video resolution",
+        default: "720p",
+        options: [
+          { value: "480p", label: "480p" },
+          { value: "720p", label: "720p" },
+        ],
+      },
+      numFrames: {
+        name: "numFrames",
+        type: "number",
+        label: "Number of Frames",
+        description: "The number of frames to extend (9-161)",
+        default: 121,
+        min: 9,
+        max: 161,
+        step: 8,
+      },
+      frameRate: {
+        name: "frameRate",
+        type: "number",
+        label: "Frame Rate",
+        description: "The frame rate of the extended video",
+        default: 30,
+        min: 1,
+        max: 60,
+        step: 1,
+      },
+      seed: {
+        name: "seed",
+        type: "number",
+        label: "Seed",
+        description: "Random seed for generation. Leave empty for random",
+        min: 0,
+        max: 2147483647,
+        placeholder: "random",
+      },
+      expandPrompt: {
+        name: "expandPrompt",
+        type: "boolean",
+        label: "Expand Prompt",
+        description: "Whether to expand the prompt using a language model",
+        default: false,
+      },
+      reverseVideo: {
+        name: "reverseVideo",
+        type: "boolean",
+        label: "Reverse Video",
+        description: "Whether to reverse the extended video",
+        default: false,
+      },
+      enableSafetyChecker: {
+        name: "enableSafetyChecker",
+        type: "boolean",
+        label: "Enable Safety Checker",
+        description: "Whether to enable the safety checker",
+        default: true,
+      },
+      firstPassNumInferenceSteps: {
+        name: "firstPassNumInferenceSteps",
+        type: "number",
+        label: "First Pass Inference Steps",
+        description: "Number of inference steps during the first pass",
+        default: 30,
+        min: 2,
+        max: 50,
+        step: 1,
+      },
+      firstPassSkipFinalSteps: {
+        name: "firstPassSkipFinalSteps",
+        type: "number",
+        label: "First Pass Skip Final Steps",
+        description:
+          "Steps to skip at the end of first pass for larger changes",
+        default: 3,
+        min: 0,
+        max: 50,
+        step: 1,
+      },
+      secondPassNumInferenceSteps: {
+        name: "secondPassNumInferenceSteps",
+        type: "number",
+        label: "Second Pass Inference Steps",
+        description: "Number of inference steps during the second pass",
+        default: 30,
+        min: 2,
+        max: 50,
+        step: 1,
+      },
+      secondPassSkipInitialSteps: {
+        name: "secondPassSkipInitialSteps",
+        type: "number",
+        label: "Second Pass Skip Initial Steps",
+        description:
+          "Steps to skip at the beginning of second pass for finer details",
+        default: 17,
+        min: 1,
+        max: 50,
+        step: 1,
+      },
+      constantRateFactor: {
+        name: "constantRateFactor",
+        type: "number",
+        label: "Compression Quality",
+        description:
+          "CRF for input compression (20=high quality, 60=low quality)",
+        default: 35,
+        min: 20,
+        max: 60,
+        step: 5,
+      },
+      // Video conditioning options
+      conditioningType: {
+        name: "conditioningType",
+        type: "select",
+        label: "Conditioning Type",
+        description: "Type of conditioning to use",
+        default: "rgb",
+        options: [{ value: "rgb", label: "RGB" }],
+      },
+      preprocess: {
+        name: "preprocess",
+        type: "boolean",
+        label: "Preprocess",
+        description: "Whether to preprocess the video",
+        default: false,
+      },
+      startFrameNum: {
+        name: "startFrameNum",
+        type: "number",
+        label: "Start Frame Number",
+        description: "Frame to start conditioning from (must be multiple of 8)",
+        default: 32,
+        min: 0,
+        max: 1000,
+        step: 8,
+      },
+      strength: {
+        name: "strength",
+        type: "number",
+        label: "Strength",
+        description: "Conditioning strength",
+        default: 1,
+        min: 0,
+        max: 1,
+        step: 0.1,
+      },
+      limitNumFrames: {
+        name: "limitNumFrames",
+        type: "boolean",
+        label: "Limit Number of Frames",
+        description: "Whether to limit the number of frames",
+        default: false,
+      },
+      maxNumFrames: {
+        name: "maxNumFrames",
+        type: "number",
+        label: "Maximum Number of Frames",
+        description: "Maximum number of frames to use",
+        default: 121,
+        min: 1,
+        max: 161,
+        step: 1,
+      },
+      resampleFps: {
+        name: "resampleFps",
+        type: "boolean",
+        label: "Resample FPS",
+        description: "Whether to resample the FPS",
+        default: false,
+      },
+      targetFps: {
+        name: "targetFps",
+        type: "number",
+        label: "Target FPS",
+        description: "Target FPS for resampling",
+        default: 30,
+        min: 1,
+        max: 60,
+        step: 1,
+      },
+      reverseVideoConditioning: {
+        name: "reverseVideoConditioning",
+        type: "boolean",
+        label: "Reverse Video (Conditioning)",
+        description: "Whether to reverse the video for conditioning",
+        default: false,
+      },
+    },
+    defaults: {
+      prompt: "",
+      negativePrompt:
+        "worst quality, inconsistent motion, blurry, jittery, distorted",
+      aspectRatio: "auto",
+      resolution: "720p",
+      numFrames: 121,
+      frameRate: 30,
+      firstPassNumInferenceSteps: 30,
+      firstPassSkipFinalSteps: 3,
+      secondPassNumInferenceSteps: 30,
+      secondPassSkipInitialSteps: 17,
+      expandPrompt: false,
+      reverseVideo: false,
+      enableSafetyChecker: true,
+      constantRateFactor: 35,
+      // Video conditioning defaults
+      conditioningType: "rgb",
+      preprocess: false,
+      startFrameNum: 32, // Default to 32 (must be multiple of 8)
+      strength: 1,
+      limitNumFrames: false,
+      maxNumFrames: 121,
+      resampleFps: false,
+      targetFps: 30,
+      reverseVideoConditioning: false,
+    },
+  },
   "stable-video-diffusion": {
     id: "stable-video-diffusion",
     name: "Stable Video Diffusion",
@@ -531,7 +794,9 @@ export function getVideoModelsByCategory(
   return Object.values(VIDEO_MODELS).filter(
     (model) =>
       model.category === category ||
-      (model.supportsMultipleCategories && category !== "text-to-video"),
+      (model.supportsMultipleCategories &&
+        category !== "text-to-video" &&
+        category !== "video-extension"),
   );
 }
 

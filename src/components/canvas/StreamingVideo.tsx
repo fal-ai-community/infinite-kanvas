@@ -25,6 +25,7 @@ export const StreamingVideo: React.FC<StreamingVideoProps> = ({
 
   // Check if this is a video-to-video transformation
   const isVideoToVideo = generation.isVideoToVideo || generation.videoUrl;
+  const isVideoExtension = generation.isVideoExtension;
 
   if (generation.imageUrl || generation.videoUrl) {
     // Both image-to-video and video-to-video use the same endpoint with multiconditioning
@@ -33,11 +34,12 @@ export const StreamingVideo: React.FC<StreamingVideoProps> = ({
         imageUrl: generation.videoUrl || generation.imageUrl, // Use video URL if available, otherwise image URL
         prompt: generation.prompt,
         duration: generation.duration || 5,
-        modelId: generation.modelId || "ltx-video-multiconditioning", // Default to multiconditioning model
+        modelId: generation.modelId || "ltx-video-multiconditioning", // Always use multiconditioning model
         resolution: generation.resolution || "720p",
         cameraFixed: generation.cameraFixed,
         seed: generation.seed,
         isVideoToVideo: isVideoToVideo,
+        isVideoExtension: isVideoExtension,
         // Include all model-specific fields
         ...Object.fromEntries(
           Object.entries(generation).filter(
@@ -63,9 +65,11 @@ export const StreamingVideo: React.FC<StreamingVideoProps> = ({
               videoId,
               eventData.progress || 0,
               eventData.status ||
-                (isVideoToVideo
-                  ? "Transforming video..."
-                  : "Converting image to video..."),
+                (isVideoExtension
+                  ? "Extending video..."
+                  : isVideoToVideo
+                    ? "Transforming video..."
+                    : "Converting image to video..."),
             );
           } else if (eventData.type === "complete") {
             onComplete(
@@ -79,17 +83,21 @@ export const StreamingVideo: React.FC<StreamingVideoProps> = ({
         },
         onError: (error) => {
           console.error(
-            isVideoToVideo
-              ? "Video-to-video transformation error:"
-              : "Image-to-video conversion error:",
+            isVideoExtension
+              ? "Video extension error:"
+              : isVideoToVideo
+                ? "Video-to-video transformation error:"
+                : "Image-to-video conversion error:",
             error,
           );
           onError(
             videoId,
             error.message ||
-              (isVideoToVideo
-                ? "Video-to-video transformation failed"
-                : "Image-to-video conversion failed"),
+              (isVideoExtension
+                ? "Video extension failed"
+                : isVideoToVideo
+                  ? "Video-to-video transformation failed"
+                  : "Image-to-video conversion failed"),
           );
         },
       },

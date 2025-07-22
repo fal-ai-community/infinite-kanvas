@@ -49,6 +49,7 @@ export interface VideoGenerationSettings {
   cameraFixed?: boolean; // Whether to fix the camera position
   seed?: number; // Random seed to control video generation
   isVideoToVideo?: boolean; // Indicates if this is a video-to-video transformation
+  isVideoExtension?: boolean; // Indicates if this is a video extension (using last frame)
   [key: string]: any; // Allow additional model-specific fields
 }
 
@@ -72,6 +73,7 @@ export interface ActiveVideoGeneration {
   sourceImageId?: string; // ID of the image used for img2vid
   sourceVideoId?: string; // ID of the video used for vid2vid
   isVideoToVideo?: boolean; // Indicates if this is a video-to-video transformation
+  isVideoExtension?: boolean; // Indicates if this is a video extension
   toastId?: string; // ID of the toast notification
   [key: string]: any; // Allow additional model-specific fields
 }
