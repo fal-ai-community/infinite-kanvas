@@ -177,6 +177,15 @@ export const CanvasVideo: React.FC<CanvasVideoProps> = ({
     videoElement.loop = !!video.isLooping;
   }, [video.isLooping, videoElement]);
 
+  // Pause video when it loses selection to prevent state update errors
+  useEffect(() => {
+    if (!isSelected && video.isPlaying && videoElement) {
+      // Pause the video to prevent ongoing timeupdate events
+      videoElement.pause();
+      onChange({ isPlaying: false });
+    }
+  }, [isSelected, video.isPlaying, videoElement, onChange]);
+
   // Handle transformer
   useEffect(() => {
     if (isSelected && trRef.current && shapeRef.current) {
@@ -300,10 +309,15 @@ export const CanvasVideo: React.FC<CanvasVideoProps> = ({
         }
         draggable={isDraggable}
         onClick={(e) => {
+          // Prevent event propagation issues
+          e.cancelBubble = true;
           onSelect(e);
           // Toggle play/pause on click if already selected
+          // Use setTimeout to ensure selection state is updated first
           if (isSelected) {
-            onChange({ isPlaying: !video.isPlaying });
+            setTimeout(() => {
+              onChange({ isPlaying: !video.isPlaying });
+            }, 0);
           }
         }}
         onTap={onSelect}

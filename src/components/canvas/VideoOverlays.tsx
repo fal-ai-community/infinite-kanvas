@@ -40,7 +40,8 @@ export const VideoOverlays: React.FC<VideoOverlaysProps> = ({
                 display: video.isLoaded ? "block" : "none",
                 opacity: hiddenVideoControlsIds.has(video.id) ? 0 : 1,
                 transition: "opacity 0.05s ease-in-out",
-                fontSize: `${12 * viewport.scale}px`,
+                // Non-linear scaling with min/max bounds for better visibility
+                fontSize: `${Math.max(10, Math.min(20, 20 * Math.sqrt(viewport.scale)))}px`,
               }}
             >
               ▶
