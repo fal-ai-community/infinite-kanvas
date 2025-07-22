@@ -232,7 +232,7 @@ export default function OverlayPage() {
           imageUrl,
           prompt: settings.prompt || "",
           duration: settings.duration || 5,
-          modelVersion: settings.modelVersion || "lite",
+          modelId: settings.modelId, // Add video modelId
           resolution: settings.resolution || "720p",
           cameraFixed: settings.cameraFixed,
           seed: settings.seed,
@@ -244,9 +244,18 @@ export default function OverlayPage() {
       // Close the dialog
       setIsImageToVideoDialogOpen(false);
 
+      // Get video model name for toast display
+      let modelName = "Video Model";
+      const modelId = settings.modelId || "ltx-video"; // Default to ltx-video
+      const { getVideoModelById } = await import("@/lib/video-models");
+      const model = getVideoModelById(modelId);
+      if (model) {
+        modelName = model.name;
+      }
+
       // Create a persistent toast that will stay visible until the conversion completes
       const toastId = toast({
-        title: `Converting image to video (${settings.modelVersion === "pro" ? "Pro" : "Lite"} - ${settings.resolution})`,
+        title: `Converting image to video (${modelName} - ${settings.resolution || "Default"})`,
         description: "This may take a minute...",
         duration: Infinity, // Make the toast stay until manually dismissed
       }).id;

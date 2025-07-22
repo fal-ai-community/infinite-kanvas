@@ -28,7 +28,7 @@ export const VideoOverlays: React.FC<VideoOverlaysProps> = ({
           {/* Video playback indicator - only visible when loaded and not playing */}
           {!video.isPlaying && video.isLoaded && (
             <div
-              className="absolute bg-primary text-white px-1 py-0.5 rounded-md text-xs"
+              className="absolute bg-none text-white px-1 py-0.5 text-xs"
               style={{
                 position: "absolute",
                 top: video.y * viewport.scale + viewport.y + 5,

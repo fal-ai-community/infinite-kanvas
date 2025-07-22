@@ -50,13 +50,7 @@ async function downloadImage(url: string): Promise<Buffer> {
   return Buffer.from(await response.arrayBuffer());
 }
 
-// Video models
-const VIDEO_MODELS = {
-  textToVideo: "fal-ai/stable-video-diffusion",
-  imageToVideoLite: "fal-ai/bytedance/seedance/v1/lite/image-to-video", // SeeDANCE Lite version
-  imageToVideoPro: "fal-ai/bytedance/seedance/v1/pro/image-to-video", // SeeDANCE Pro version
-  videoToVideo: "fal-ai/stable-video-diffusion-img2vid", // This is a placeholder, replace with actual model when available
-};
+import { getVideoModelById, VIDEO_MODELS } from "@/lib/video-models";
 
 export const appRouter = router({
   transformVideo: publicProcedure
@@ -83,15 +77,18 @@ export const appRouter = router({
         });
 
         // Start streaming from fal.ai
-        const stream = await falClient.stream(VIDEO_MODELS.videoToVideo, {
-          input: {
-            video_url: input.videoUrl,
-            prompt: input.prompt || "",
-            style: input.styleId || "",
-            num_inference_steps: 25,
-            guidance_scale: 7.5,
+        const stream = await falClient.stream(
+          VIDEO_MODELS["stable-video-diffusion"].endpoint,
+          {
+            input: {
+              video_url: input.videoUrl,
+              prompt: input.prompt || "",
+              style: input.styleId || "",
+              num_inference_steps: 25,
+              guidance_scale: 7.5,
+            },
           },
-        });
+        );
 
         let eventIndex = 0;
 
@@ -120,8 +117,12 @@ export const appRouter = router({
         // Get the final result
         const result = await stream.done();
 
-        // Check if we have a valid video URL
-        if (!result.video_url) {
+        // Handle different response formats
+        const videoUrl =
+          (result as any).data?.video?.url ||
+          (result as any).data?.url ||
+          (result as any).video_url;
+        if (!videoUrl) {
           yield tracked(`${transformationId}_error`, {
             type: "error",
             error: "No video generated",
@@ -132,8 +133,8 @@ export const appRouter = router({
         // Send the final video
         yield tracked(`${transformationId}_complete`, {
           type: "complete",
-          videoUrl: result.video_url,
-          duration: result.duration || 3, // Default to 3 seconds if not provided
+          videoUrl: videoUrl,
+          duration: (result as any).duration || 3, // Default to 3 seconds if not provided
         });
       } catch (error) {
         console.error("Error in video transformation:", error);
@@ -148,19 +149,21 @@ export const appRouter = router({
     }),
   generateImageToVideo: publicProcedure
     .input(
-      z.object({
-        imageUrl: z.string().url(),
-        prompt: z.string().optional(),
-        duration: z.number().optional().default(5),
-        modelVersion: z.enum(["lite", "pro"]).optional().default("lite"),
-        resolution: z
-          .enum(["480p", "720p", "1080p"])
-          .optional()
-          .default("720p"),
-        cameraFixed: z.boolean().optional().default(false),
-        seed: z.number().optional().default(-1),
-        apiKey: z.string().optional(),
-      }),
+      z
+        .object({
+          imageUrl: z.string().url(),
+          prompt: z.string().optional(),
+          duration: z.number().optional().default(5),
+          modelId: z.string().optional(),
+          resolution: z
+            .enum(["480p", "720p", "1080p"])
+            .optional()
+            .default("720p"),
+          cameraFixed: z.boolean().optional().default(false),
+          seed: z.number().optional().default(-1),
+          apiKey: z.string().optional(),
+        })
+        .passthrough(), // Allow additional fields for different models
     )
     .subscription(async function* ({ input, signal, ctx }) {
       try {
@@ -192,34 +195,77 @@ export const appRouter = router({
         const prompt =
           input.prompt || "A smooth animation of the image with natural motion";
 
-        // Determine which model to use based on the modelVersion
-        const modelEndpoint =
-          input.modelVersion === "pro"
-            ? VIDEO_MODELS.imageToVideoPro
-            : VIDEO_MODELS.imageToVideoLite;
+        // Determine model from modelId or use default
+        const modelId = input.modelId || "ltx-video"; // Default to ltx-video
+        const model = getVideoModelById(modelId);
+        if (!model) {
+          throw new Error(`Unknown model ID: ${modelId}`);
+        }
+        const modelEndpoint = model.endpoint;
 
-        console.log(
-          `Calling SeeDANCE ${input.modelVersion.toUpperCase()} API with parameters:`,
-          {
+        // Build input parameters based on model configuration
+        let inputParams: any = {};
+
+        if (input.modelId) {
+          const model = getVideoModelById(input.modelId);
+          if (model) {
+            // Map our generic field names to model-specific field names
+            if (model.id === "ltx-video") {
+              inputParams = {
+                image_url: input.imageUrl,
+                prompt: input.prompt || "",
+                negative_prompt:
+                  (input as any).negativePrompt ||
+                  model.defaults.negativePrompt,
+                resolution: input.resolution || model.defaults.resolution,
+                aspect_ratio:
+                  (input as any).aspectRatio || model.defaults.aspectRatio,
+                num_frames:
+                  (input as any).numFrames || model.defaults.numFrames,
+                frame_rate:
+                  (input as any).frameRate || model.defaults.frameRate,
+                expand_prompt:
+                  (input as any).expandPrompt ?? model.defaults.expandPrompt,
+                reverse_video:
+                  (input as any).reverseVideo ?? model.defaults.reverseVideo,
+                constant_rate_factor:
+                  (input as any).constantRateFactor ||
+                  model.defaults.constantRateFactor,
+                seed:
+                  input.seed !== undefined && input.seed !== -1
+                    ? input.seed
+                    : undefined,
+                enable_safety_checker: true,
+              };
+            } else {
+              // SeeDANCE models and others
+              inputParams = {
+                image_url: input.imageUrl,
+                prompt: input.prompt || prompt,
+                duration: duration || input.duration,
+                resolution: input.resolution,
+                camera_fixed:
+                  input.cameraFixed !== undefined ? input.cameraFixed : false,
+                seed: input.seed !== undefined ? input.seed : -1,
+              };
+            }
+          }
+        } else {
+          // Backward compatibility
+          inputParams = {
             image_url: input.imageUrl,
-            prompt,
-            duration,
+            prompt: prompt,
+            duration: duration,
             resolution: input.resolution,
-            camera_fixed: input.cameraFixed,
-            seed: input.seed,
-          },
-        );
-
-        const result = await falClient.subscribe(modelEndpoint, {
-          input: {
-            image_url: input.imageUrl,
-            prompt, // Descriptive prompt
-            duration, // Only "5" or "10" are allowed
-            resolution: input.resolution, // Use selected resolution
             camera_fixed:
-              input.cameraFixed !== undefined ? input.cameraFixed : false, // Use explicit camera fixed setting
-            seed: input.seed !== undefined ? input.seed : -1, // Use provided seed or default to random
-          },
+              input.cameraFixed !== undefined ? input.cameraFixed : false,
+            seed: input.seed !== undefined ? input.seed : -1,
+          };
+        }
+
+        console.log(`Calling ${modelEndpoint} with parameters:`, inputParams);
+        const result = await falClient.subscribe(modelEndpoint, {
+          input: inputParams,
         });
 
         // Yield progress update
@@ -229,8 +275,14 @@ export const appRouter = router({
           status: "Video generation complete",
         });
 
-        // Check if we have a valid video URL
-        if (!result.data?.video?.url) {
+        // Handle different response formats from different models
+        const videoUrl =
+          result.data?.video?.url ||
+          result.data?.url ||
+          (result as any).video?.url ||
+          (result as any).url;
+        if (!videoUrl) {
+          console.error("No video URL found in response:", result);
           yield tracked(`${generationId}_error`, {
             type: "error",
             error: "No video generated",
@@ -238,11 +290,14 @@ export const appRouter = router({
           return;
         }
 
+        // Extract duration from response or use input value
+        const videoDuration = result.data?.duration || input.duration || 5;
+
         // Send the final video
         yield tracked(`${generationId}_complete`, {
           type: "complete",
-          videoUrl: result.data.video.url,
-          duration: input.duration,
+          videoUrl: videoUrl,
+          duration: videoDuration,
         });
       } catch (error) {
         console.error("Error in image-to-video conversion:", error);
@@ -280,19 +335,22 @@ export const appRouter = router({
         });
 
         // Start streaming from fal.ai
-        const stream = await falClient.stream(VIDEO_MODELS.textToVideo, {
-          input: {
-            prompt: input.prompt,
-            num_frames: Math.floor(input.duration * 24), // Convert seconds to frames at 24fps
-            num_inference_steps: 25,
-            guidance_scale: 7.5,
-            width: 576,
-            height: 320,
-            fps: 24,
-            motion_bucket_id: 127, // Higher values = more motion
-            seed: Math.floor(Math.random() * 2147483647),
+        const stream = await falClient.stream(
+          VIDEO_MODELS["stable-video-diffusion"].endpoint,
+          {
+            input: {
+              prompt: input.prompt,
+              num_frames: Math.floor(input.duration * 24), // Convert seconds to frames at 24fps
+              num_inference_steps: 25,
+              guidance_scale: 7.5,
+              width: 576,
+              height: 320,
+              fps: 24,
+              motion_bucket_id: 127, // Higher values = more motion
+              seed: Math.floor(Math.random() * 2147483647),
+            },
           },
-        });
+        );
 
         let eventIndex = 0;
 
@@ -321,8 +379,12 @@ export const appRouter = router({
         // Get the final result
         const result = await stream.done();
 
-        // Check if we have a valid video URL
-        if (!result.video_url) {
+        // Handle different response formats
+        const videoUrl =
+          (result as any).data?.video?.url ||
+          (result as any).data?.url ||
+          (result as any).video_url;
+        if (!videoUrl) {
           yield tracked(`${generationId}_error`, {
             type: "error",
             error: "No video generated",
@@ -333,7 +395,7 @@ export const appRouter = router({
         // Send the final video
         yield tracked(`${generationId}_complete`, {
           type: "complete",
-          videoUrl: result.video_url,
+          videoUrl: videoUrl,
           duration: input.duration,
         });
       } catch (error) {

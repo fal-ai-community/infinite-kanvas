@@ -44,10 +44,11 @@ export interface VideoGenerationSettings {
   styleId?: string;
   motion?: string; // For image-to-video
   sourceUrl?: string; // For image-to-video or video-to-video
-  modelVersion?: "lite" | "pro"; // SeeDANCE model version
+  modelId?: string; // Model identifier from video-models.ts
   resolution?: "480p" | "720p" | "1080p"; // Video resolution
   cameraFixed?: boolean; // Whether to fix the camera position
   seed?: number; // Random seed to control video generation
+  [key: string]: any; // Allow additional model-specific fields
 }
 
 export interface ActiveGeneration {
@@ -63,12 +64,13 @@ export interface ActiveVideoGeneration {
   duration?: number;
   motion?: string;
   styleId?: string;
-  modelVersion?: "lite" | "pro"; // SeeDANCE model version
+  modelId?: string; // Model identifier from video-models.ts
   resolution?: "480p" | "720p" | "1080p"; // Video resolution
   cameraFixed?: boolean; // Whether to fix the camera position
   seed?: number; // Random seed to control video generation
   sourceImageId?: string; // ID of the image used for img2vid
   toastId?: string; // ID of the toast notification
+  [key: string]: any; // Allow additional model-specific fields
 }
 
 export interface SelectionBox {

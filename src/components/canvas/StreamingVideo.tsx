@@ -66,10 +66,19 @@ export const StreamingVideo: React.FC<StreamingVideoProps> = ({
         imageUrl: generation.imageUrl,
         prompt: generation.prompt,
         duration: generation.duration || 5,
-        modelVersion: generation.modelVersion || "lite",
+        modelId: generation.modelId || "ltx-video", // Default to ltx-video
         resolution: generation.resolution || "720p",
         cameraFixed: generation.cameraFixed,
         seed: generation.seed,
+        // Include all model-specific fields
+        ...Object.fromEntries(
+          Object.entries(generation).filter(
+            ([key]) =>
+              !["imageUrl", "videoUrl", "sourceImageId", "toastId"].includes(
+                key,
+              ),
+          ),
+        ),
         ...(apiKey ? { apiKey } : {}),
       },
       {
