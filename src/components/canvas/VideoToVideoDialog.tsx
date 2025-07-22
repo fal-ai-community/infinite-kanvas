@@ -22,22 +22,22 @@ import {
 } from "@/lib/video-models";
 import { ChevronRight, X } from "lucide-react";
 
-interface ImageToVideoDialogProps {
+interface VideoToVideoDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onConvert: (settings: VideoGenerationSettings) => void;
-  imageUrl: string;
+  videoUrl: string;
   isConverting: boolean;
 }
 
-export const ImageToVideoDialog: React.FC<ImageToVideoDialogProps> = ({
+export const VideoToVideoDialog: React.FC<VideoToVideoDialogProps> = ({
   isOpen,
   onClose,
   onConvert,
-  imageUrl,
+  videoUrl,
   isConverting,
 }) => {
-  const defaultModel = getDefaultVideoModel("image-to-video");
+  const defaultModel = getDefaultVideoModel("video-to-video");
   const [selectedModelId, setSelectedModelId] = useState(
     defaultModel?.id || "ltx-video-multiconditioning",
   );
@@ -67,18 +67,19 @@ export const ImageToVideoDialog: React.FC<ImageToVideoDialogProps> = ({
     if (!selectedModel) return;
 
     // Map the dynamic options to the VideoGenerationSettings format
-    // This maintains backward compatibility with existing code
     const settings: VideoGenerationSettings = {
       prompt: optionValues.prompt || "",
-      sourceUrl: imageUrl,
+      sourceUrl: videoUrl,
       modelId: selectedModel.id,
-      // Include all option values for new models first
+      // Include all option values
       ...optionValues,
       // Then override with properly typed values
       ...(optionValues.duration && {
         duration: parseInt(optionValues.duration),
       }),
       ...(optionValues.seed !== undefined && { seed: optionValues.seed }),
+      // Indicate this is a video-to-video transformation
+      isVideoToVideo: true,
     };
 
     onConvert(settings);
@@ -90,9 +91,9 @@ export const ImageToVideoDialog: React.FC<ImageToVideoDialogProps> = ({
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-[600px] p-5 bg-white">
         <DialogHeader>
-          <DialogTitle>Convert Image to Video</DialogTitle>
+          <DialogTitle>Video to Video</DialogTitle>
           <DialogDescription>
-            Transform your static image into a dynamic video using AI.
+            Transform your video with AI-powered style transfer and effects.
           </DialogDescription>
         </DialogHeader>
 
@@ -101,8 +102,8 @@ export const ImageToVideoDialog: React.FC<ImageToVideoDialogProps> = ({
           <div className="w-full mb-4">
             <VideoModelSelector
               value={selectedModelId}
+              category="video-to-video"
               onChange={setSelectedModelId}
-              category="image-to-video"
               disabled={isConverting}
             />
           </div>
@@ -111,14 +112,16 @@ export const ImageToVideoDialog: React.FC<ImageToVideoDialogProps> = ({
           <ModelPricingDisplay model={selectedModel} className="mb-4" />
 
           <div className="flex gap-4">
-            {/* Left column - Image Preview */}
+            {/* Left column - Video Preview */}
             <div className="w-1/3">
               <div className="border rounded-md overflow-hidden aspect-square flex items-center justify-center bg-gray-50">
-                {imageUrl && (
-                  <img
-                    src={imageUrl}
-                    alt="Source image"
-                    className="w-full h-full object-contain"
+                {videoUrl && (
+                  <video
+                    src={videoUrl}
+                    className="max-w-full max-h-full object-contain"
+                    controls={false}
+                    muted
+                    playsInline
                   />
                 )}
               </div>
@@ -157,39 +160,23 @@ export const ImageToVideoDialog: React.FC<ImageToVideoDialogProps> = ({
             </div>
           </div>
 
-          <DialogFooter className="mt-4 flex justify-between">
+          <DialogFooter>
             <Button
               type="button"
-              variant="default"
+              variant="outline"
               onClick={onClose}
               disabled={isConverting}
-              className="border border-gray-300 bg-white hover:bg-gray-50"
             >
               Cancel
             </Button>
-            <Button
-              type="submit"
-              variant="primary"
-              disabled={isConverting}
-              className="bg-primary text-white hover:bg-[#5b21b6] flex items-center gap-2"
-            >
+            <Button type="submit" disabled={isConverting}>
               {isConverting ? (
                 <>
-                  <SpinnerIcon className="h-4 w-4 animate-spin" />
+                  <SpinnerIcon className="mr-2 h-4 w-4 animate-spin" />
                   Converting...
                 </>
               ) : (
-                <div className="flex items-center gap-2">
-                  <span>Run</span>
-                  <span className="flex flex-row space-x-0.5">
-                    <kbd className="flex items-center justify-center tracking-tighter rounded border px-1 font-mono bg-white/10 border-white/10 h-6 min-w-6 text-xs">
-                      ⌘
-                    </kbd>
-                    <kbd className="flex items-center justify-center tracking-tighter rounded border px-1 font-mono bg-white/10 border-white/10 h-6 min-w-6 text-xs">
-                      ↵
-                    </kbd>
-                  </span>
-                </div>
+                "Transform Video"
               )}
             </Button>
           </DialogFooter>

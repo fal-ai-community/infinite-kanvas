@@ -210,7 +210,69 @@ export const appRouter = router({
           const model = getVideoModelById(input.modelId);
           if (model) {
             // Map our generic field names to model-specific field names
-            if (model.id === "ltx-video") {
+            if (model.id === "ltx-video-multiconditioning") {
+              // Handle multiconditioning model with support for video-to-video
+              const isVideoToVideo = (input as any).isVideoToVideo;
+
+              inputParams = {
+                prompt: input.prompt || "",
+                negative_prompt:
+                  (input as any).negativePrompt ||
+                  model.defaults.negativePrompt,
+                resolution: input.resolution || model.defaults.resolution,
+                aspect_ratio:
+                  (input as any).aspectRatio || model.defaults.aspectRatio,
+                num_frames:
+                  (input as any).numFrames || model.defaults.numFrames,
+                frame_rate:
+                  (input as any).frameRate || model.defaults.frameRate,
+                first_pass_num_inference_steps:
+                  (input as any).firstPassNumInferenceSteps ||
+                  model.defaults.firstPassNumInferenceSteps,
+                first_pass_skip_final_steps:
+                  (input as any).firstPassSkipFinalSteps ||
+                  model.defaults.firstPassSkipFinalSteps,
+                second_pass_num_inference_steps:
+                  (input as any).secondPassNumInferenceSteps ||
+                  model.defaults.secondPassNumInferenceSteps,
+                second_pass_skip_initial_steps:
+                  (input as any).secondPassSkipInitialSteps ||
+                  model.defaults.secondPassSkipInitialSteps,
+                expand_prompt:
+                  (input as any).expandPrompt ?? model.defaults.expandPrompt,
+                reverse_video:
+                  (input as any).reverseVideo ?? model.defaults.reverseVideo,
+                enable_safety_checker:
+                  (input as any).enableSafetyChecker ??
+                  model.defaults.enableSafetyChecker,
+                constant_rate_factor:
+                  (input as any).constantRateFactor ||
+                  model.defaults.constantRateFactor,
+                seed:
+                  input.seed !== undefined && input.seed !== -1
+                    ? input.seed
+                    : undefined,
+              };
+
+              // Add image or video conditioning based on the type
+              if (isVideoToVideo) {
+                inputParams.videos = [
+                  {
+                    video_url: input.imageUrl, // imageUrl contains the video URL
+                    start_frame_num: 0,
+                    end_frame_num: -1, // Use all frames
+                  },
+                ];
+              } else {
+                inputParams.images = [
+                  {
+                    image_url: input.imageUrl,
+                    strength: 1.0,
+                    start_frame_num: 0,
+                  },
+                ];
+              }
+            } else if (model.id === "ltx-video") {
               inputParams = {
                 image_url: input.imageUrl,
                 prompt: input.prompt || "",

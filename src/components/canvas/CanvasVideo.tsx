@@ -184,6 +184,16 @@ export const CanvasVideo: React.FC<CanvasVideoProps> = ({
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!isSelected) return;
 
+      // Don't handle shortcuts if user is typing in an input/textarea
+      const target = e.target as HTMLElement;
+      if (
+        target.tagName === "INPUT" ||
+        target.tagName === "TEXTAREA" ||
+        target.contentEditable === "true"
+      ) {
+        return;
+      }
+
       // Prevent default actions for these keys
       if (
         [

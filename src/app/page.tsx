@@ -60,6 +60,7 @@ import { CanvasImage } from "@/components/canvas/CanvasImage";
 import { CanvasVideo } from "@/components/canvas/CanvasVideo";
 import { VideoControls } from "@/components/canvas/VideoControls";
 import { ImageToVideoDialog } from "@/components/canvas/ImageToVideoDialog";
+import { VideoToVideoDialog } from "@/components/canvas/VideoToVideoDialog";
 
 // Import types
 import type {
@@ -167,6 +168,12 @@ export default function OverlayPage() {
     string | null
   >(null);
   const [isConvertingToVideo, setIsConvertingToVideo] = useState(false);
+  const [isVideoToVideoDialogOpen, setIsVideoToVideoDialogOpen] =
+    useState(false);
+  const [selectedVideoForVideo, setSelectedVideoForVideo] = useState<
+    string | null
+  >(null);
+  const [isTransformingVideo, setIsTransformingVideo] = useState(false);
   const [customApiKey, setCustomApiKey] = useState<string>("");
   const [tempApiKey, setTempApiKey] = useState<string>("");
   const [_, setIsSaving] = useState(false);
@@ -284,6 +291,100 @@ export default function OverlayPage() {
     }
   };
 
+  // Function to handle the "Video to Video" option in the context menu
+  const handleVideoToVideo = (videoId: string) => {
+    const video = videos.find((vid) => vid.id === videoId);
+    if (!video) return;
+
+    setSelectedVideoForVideo(videoId);
+    setIsVideoToVideoDialogOpen(true);
+  };
+
+  // Function to handle the video-to-video transformation
+  const handleVideoToVideoTransformation = async (
+    settings: VideoGenerationSettings,
+  ) => {
+    if (!selectedVideoForVideo) return;
+
+    const video = videos.find((vid) => vid.id === selectedVideoForVideo);
+    if (!video) return;
+
+    try {
+      setIsTransformingVideo(true);
+
+      // Upload video if it's a data URL or local file
+      let videoUrl = video.src;
+      if (videoUrl.startsWith("data:") || videoUrl.startsWith("blob:")) {
+        const uploadResult = await falClient.storage.upload(
+          await (await fetch(videoUrl)).blob(),
+        );
+        videoUrl = uploadResult;
+      }
+
+      // Create a unique ID for this generation
+      const generationId = `vid2vid_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+
+      // Add to active generations
+      setActiveVideoGenerations((prev) => {
+        const newMap = new Map(prev);
+        newMap.set(generationId, {
+          imageUrl: videoUrl, // Using imageUrl field for video URL
+          prompt: settings.prompt || "",
+          duration: video.duration || settings.duration || 5,
+          modelId: settings.modelId || "ltx-video-multiconditioning",
+          resolution: settings.resolution || "720p",
+          isVideoToVideo: true,
+          sourceVideoId: selectedVideoForVideo,
+          ...settings, // Include all other settings
+        });
+        return newMap;
+      });
+
+      // Close the dialog
+      setIsVideoToVideoDialogOpen(false);
+
+      // Get video model name for toast display
+      let modelName = "Video Model";
+      const modelId = settings.modelId || "ltx-video-multiconditioning";
+      const { getVideoModelById } = await import("@/lib/video-models");
+      const model = getVideoModelById(modelId);
+      if (model) {
+        modelName = model.name;
+      }
+
+      // Create a persistent toast
+      const toastId = toast({
+        title: `Transforming video (${modelName} - ${settings.resolution || "Default"})`,
+        description: "This may take a minute...",
+        duration: Infinity,
+      }).id;
+
+      // Store the toast ID with the generation
+      setActiveVideoGenerations((prev) => {
+        const newMap = new Map(prev);
+        const generation = newMap.get(generationId);
+        if (generation) {
+          newMap.set(generationId, {
+            ...generation,
+            toastId,
+          });
+        }
+        return newMap;
+      });
+    } catch (error) {
+      console.error("Error starting video-to-video transformation:", error);
+      toast({
+        title: "Transformation failed",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Failed to start transformation",
+        variant: "destructive",
+      });
+      setIsTransformingVideo(false);
+    }
+  };
+
   // Function to handle video generation completion
   const handleVideoGenerationComplete = async (
     videoId: string,
@@ -338,13 +439,58 @@ export default function OverlayPage() {
             variant: "destructive",
           });
         }
-      } else if (generation?.videoUrl) {
-        // This was a video transformation
-        // Handle video transformation completion
-        toast({
-          title: "Video transformed successfully",
-          description: "The transformed video has been added to the canvas.",
-        });
+      } else if (generation?.sourceVideoId || generation?.isVideoToVideo) {
+        // This was a video-to-video transformation
+        const sourceVideoId =
+          generation?.sourceVideoId || selectedVideoForVideo;
+
+        if (sourceVideoId) {
+          const sourceVideo = videos.find((vid) => vid.id === sourceVideoId);
+          if (sourceVideo) {
+            // Create a new video based on the source video
+            const newVideo: PlacedVideo = {
+              id: `video_${Date.now()}_${Math.random().toString(36).substring(7)}`,
+              src: videoUrl,
+              x: sourceVideo.x + sourceVideo.width + 20, // Position to the right
+              y: sourceVideo.y,
+              width: sourceVideo.width,
+              height: sourceVideo.height,
+              rotation: 0,
+              isPlaying: false,
+              currentTime: 0,
+              duration: duration,
+              volume: 1,
+              muted: false,
+              loop: false,
+              playbackRate: 1,
+              isVideo: true as const,
+              createdAt: Date.now(),
+            };
+
+            // Add the transformed video to the canvas
+            setVideos((prev) => [...prev, newVideo]);
+
+            // Save to history
+            saveToHistory();
+
+            toast({
+              title: "Video transformed successfully",
+              description:
+                "The transformed video has been added to the right of the source video.",
+            });
+          } else {
+            console.error("Source video not found:", sourceVideoId);
+            toast({
+              title: "Error creating video",
+              description: "The source video could not be found.",
+              variant: "destructive",
+            });
+          }
+        }
+
+        // Reset the transformation state
+        setIsTransformingVideo(false);
+        setSelectedVideoForVideo(null);
       } else {
         // This was a text-to-video generation
         // For now, just log it as the placement function is missing
@@ -2438,6 +2584,7 @@ export default function OverlayPage() {
               handleDelete={handleDelete}
               handleIsolate={handleIsolate}
               handleConvertToVideo={handleConvertToVideo}
+              handleVideoToVideo={handleVideoToVideo}
               setCroppingImageId={setCroppingImageId}
               setIsolateInputValue={setIsolateInputValue}
               setIsolateTarget={setIsolateTarget}
@@ -3085,6 +3232,21 @@ export default function OverlayPage() {
             : ""
         }
         isConverting={isConvertingToVideo}
+      />
+
+      <VideoToVideoDialog
+        isOpen={isVideoToVideoDialogOpen}
+        onClose={() => {
+          setIsVideoToVideoDialogOpen(false);
+          setSelectedVideoForVideo(null);
+        }}
+        onConvert={handleVideoToVideoTransformation}
+        videoUrl={
+          selectedVideoForVideo
+            ? videos.find((vid) => vid.id === selectedVideoForVideo)?.src || ""
+            : ""
+        }
+        isConverting={isTransformingVideo}
       />
 
       {/* Video Generation Streaming Components */}

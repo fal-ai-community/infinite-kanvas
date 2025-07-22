@@ -90,6 +90,8 @@ interface VideoModelOptionsProps {
   values: Record<string, any>;
   onChange: (field: string, value: any) => void;
   disabled?: boolean;
+  optionKeys?: string[]; // Only show these specific options
+  excludeKeys?: string[]; // Exclude these options
 }
 
 export const VideoModelOptions: React.FC<VideoModelOptionsProps> = ({
@@ -97,6 +99,8 @@ export const VideoModelOptions: React.FC<VideoModelOptionsProps> = ({
   values,
   onChange,
   disabled = false,
+  optionKeys,
+  excludeKeys,
 }) => {
   const renderOption = (key: string, option: VideoModelOption) => {
     const value = values[key] ?? option.default;
@@ -330,11 +334,20 @@ export const VideoModelOptions: React.FC<VideoModelOptionsProps> = ({
     }
   };
 
+  // Filter options based on optionKeys or excludeKeys
+  const optionsToRender = Object.entries(model.options).filter(([key]) => {
+    if (optionKeys && optionKeys.length > 0) {
+      return optionKeys.includes(key);
+    }
+    if (excludeKeys && excludeKeys.length > 0) {
+      return !excludeKeys.includes(key);
+    }
+    return true;
+  });
+
   return (
     <div className="space-y-4">
-      {Object.entries(model.options).map(([key, option]) =>
-        renderOption(key, option),
-      )}
+      {optionsToRender.map(([key, option]) => renderOption(key, option))}
     </div>
   );
 };

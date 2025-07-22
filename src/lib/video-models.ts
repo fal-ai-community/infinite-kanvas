@@ -30,15 +30,196 @@ export interface VideoModelConfig {
   id: string;
   name: string;
   endpoint: string;
-  category: "text-to-video" | "image-to-video" | "video-to-video";
+  category:
+    | "text-to-video"
+    | "image-to-video"
+    | "video-to-video"
+    | "multiconditioning";
   pricing: VideoModelPricing;
   options: Record<string, VideoModelOption>;
   defaults: Record<string, any>;
   constraints?: ModelConstraints;
   isDefault?: boolean;
+  supportsMultipleCategories?: boolean;
 }
 
 export const VIDEO_MODELS: Record<string, VideoModelConfig> = {
+  "ltx-video-multiconditioning": {
+    id: "ltx-video-multiconditioning",
+    name: "LTX Video Multiconditioning",
+    endpoint: "fal-ai/ltx-video-13b-dev/multiconditioning",
+    category: "multiconditioning",
+    supportsMultipleCategories: true,
+    pricing: {
+      costPerVideo: 0.2,
+      currency: "USD",
+      unit: "video",
+    },
+    isDefault: true,
+    options: {
+      prompt: {
+        name: "prompt",
+        type: "text",
+        label: "Prompt",
+        description: "Text prompt to guide generation",
+        placeholder: "Describe the motion or transformation...",
+        required: true,
+      },
+      negativePrompt: {
+        name: "negativePrompt",
+        type: "text",
+        label: "Negative Prompt",
+        description: "What to avoid in the generation",
+        default:
+          "worst quality, inconsistent motion, blurry, jittery, distorted",
+        placeholder: "worst quality, inconsistent motion...",
+      },
+      resolution: {
+        name: "resolution",
+        type: "select",
+        label: "Resolution",
+        description: "Video resolution",
+        default: "720p",
+        options: [
+          { value: "480p", label: "480p" },
+          { value: "720p", label: "720p" },
+        ],
+      },
+      aspectRatio: {
+        name: "aspectRatio",
+        type: "select",
+        label: "Aspect Ratio",
+        description: "The aspect ratio of the video",
+        default: "auto",
+        options: [
+          { value: "auto", label: "Auto (from source)" },
+          { value: "9:16", label: "9:16 (Portrait)" },
+          { value: "1:1", label: "1:1 (Square)" },
+          { value: "16:9", label: "16:9 (Landscape)" },
+        ],
+      },
+      numFrames: {
+        name: "numFrames",
+        type: "number",
+        label: "Number of Frames",
+        description: "The number of frames in the video (9-161)",
+        default: 121,
+        min: 9,
+        max: 161,
+        step: 8,
+      },
+      frameRate: {
+        name: "frameRate",
+        type: "number",
+        label: "Frame Rate",
+        description: "The frame rate of the video",
+        default: 30,
+        min: 1,
+        max: 60,
+        step: 1,
+      },
+      firstPassNumInferenceSteps: {
+        name: "firstPassNumInferenceSteps",
+        type: "number",
+        label: "First Pass Inference Steps",
+        description: "Number of inference steps during the first pass",
+        default: 30,
+        min: 2,
+        max: 50,
+        step: 1,
+      },
+      firstPassSkipFinalSteps: {
+        name: "firstPassSkipFinalSteps",
+        type: "number",
+        label: "First Pass Skip Final Steps",
+        description:
+          "Steps to skip at the end of first pass for larger changes",
+        default: 3,
+        min: 0,
+        max: 50,
+        step: 1,
+      },
+      secondPassNumInferenceSteps: {
+        name: "secondPassNumInferenceSteps",
+        type: "number",
+        label: "Second Pass Inference Steps",
+        description: "Number of inference steps during the second pass",
+        default: 30,
+        min: 2,
+        max: 50,
+        step: 1,
+      },
+      secondPassSkipInitialSteps: {
+        name: "secondPassSkipInitialSteps",
+        type: "number",
+        label: "Second Pass Skip Initial Steps",
+        description:
+          "Steps to skip at the beginning of second pass for finer details",
+        default: 17,
+        min: 1,
+        max: 50,
+        step: 1,
+      },
+      seed: {
+        name: "seed",
+        type: "number",
+        label: "Seed",
+        description: "Random seed for generation. Leave empty for random",
+        min: 0,
+        max: 2147483647,
+        placeholder: "random",
+      },
+      expandPrompt: {
+        name: "expandPrompt",
+        type: "boolean",
+        label: "Expand Prompt",
+        description: "Whether to expand the prompt using a language model",
+        default: false,
+      },
+      reverseVideo: {
+        name: "reverseVideo",
+        type: "boolean",
+        label: "Reverse Video",
+        description: "Whether to reverse the video",
+        default: false,
+      },
+      enableSafetyChecker: {
+        name: "enableSafetyChecker",
+        type: "boolean",
+        label: "Enable Safety Checker",
+        description: "Whether to enable the safety checker",
+        default: true,
+      },
+      constantRateFactor: {
+        name: "constantRateFactor",
+        type: "number",
+        label: "Compression Quality",
+        description:
+          "CRF for input compression (20=high quality, 60=low quality)",
+        default: 35,
+        min: 20,
+        max: 60,
+        step: 5,
+      },
+    },
+    defaults: {
+      prompt: "",
+      negativePrompt:
+        "worst quality, inconsistent motion, blurry, jittery, distorted",
+      resolution: "720p",
+      aspectRatio: "auto",
+      numFrames: 121,
+      frameRate: 30,
+      firstPassNumInferenceSteps: 30,
+      firstPassSkipFinalSteps: 3,
+      secondPassNumInferenceSteps: 30,
+      secondPassSkipInitialSteps: 17,
+      expandPrompt: false,
+      reverseVideo: false,
+      enableSafetyChecker: true,
+      constantRateFactor: 35,
+    },
+  },
   "seedance-lite": {
     id: "seedance-lite",
     name: "SeeDANCE 1.0 Lite",
@@ -192,7 +373,7 @@ export const VIDEO_MODELS: Record<string, VideoModelConfig> = {
       currency: "USD",
       unit: "video",
     },
-    isDefault: true,
+    isDefault: false,
     options: {
       prompt: {
         name: "prompt",
@@ -348,7 +529,9 @@ export function getVideoModelsByCategory(
   category: VideoModelConfig["category"],
 ): VideoModelConfig[] {
   return Object.values(VIDEO_MODELS).filter(
-    (model) => model.category === category,
+    (model) =>
+      model.category === category ||
+      (model.supportsMultipleCategories && category !== "text-to-video"),
   );
 }
 

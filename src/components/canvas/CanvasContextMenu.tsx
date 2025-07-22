@@ -49,6 +49,7 @@ interface CanvasContextMenuProps {
   handleDelete: () => void;
   handleIsolate: () => void;
   handleConvertToVideo?: (imageId: string) => void;
+  handleVideoToVideo?: (videoId: string) => void;
   setCroppingImageId: (id: string | null) => void;
   setIsolateInputValue: (value: string) => void;
   setIsolateTarget: (id: string | null) => void;
@@ -73,6 +74,7 @@ export const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
   handleDelete,
   handleIsolate,
   handleConvertToVideo,
+  handleVideoToVideo,
   setCroppingImageId,
   setIsolateInputValue,
   setIsolateTarget,
@@ -132,28 +134,32 @@ export const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
         <Scissors className="h-4 w-4" />
         Remove Background
       </ContextMenuItem>
-      <ContextMenuItem
-        onClick={() => {
-          if (selectedIds.length === 1 && handleConvertToVideo) {
-            // Only convert images, not videos
-            const isSelectedVideo = videos?.some(
-              (v) => v.id === selectedIds[0],
-            );
-            if (!isSelectedVideo) {
+      {selectedIds.length === 1 &&
+        handleConvertToVideo &&
+        images.some((img) => img.id === selectedIds[0]) && (
+          <ContextMenuItem
+            onClick={() => {
               handleConvertToVideo(selectedIds[0]);
-            }
-          }
-        }}
-        disabled={
-          selectedIds.length !== 1 ||
-          !handleConvertToVideo ||
-          videos?.some((v) => v.id === selectedIds[0])
-        }
-        className="flex items-center gap-2"
-      >
-        <Video className="h-4 w-4" />
-        Convert to Video
-      </ContextMenuItem>
+            }}
+            className="flex items-center gap-2"
+          >
+            <Video className="h-4 w-4" />
+            Image to Video
+          </ContextMenuItem>
+        )}
+      {selectedIds.length === 1 &&
+        handleVideoToVideo &&
+        videos?.some((v) => v.id === selectedIds[0]) && (
+          <ContextMenuItem
+            onClick={() => {
+              handleVideoToVideo(selectedIds[0]);
+            }}
+            className="flex items-center gap-2"
+          >
+            <Video className="h-4 w-4" />
+            Video to Video
+          </ContextMenuItem>
+        )}
       <ContextMenuSub>
         <ContextMenuSubTrigger
           disabled={selectedIds.length !== 1}

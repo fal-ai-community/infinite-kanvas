@@ -23,60 +23,32 @@ export const StreamingVideo: React.FC<StreamingVideoProps> = ({
   // Determine which endpoint to use based on the generation type
   let subscriptionOptions;
 
-  if (generation.videoUrl) {
-    // Video-to-video transformation
-    subscriptionOptions = useTRPC().transformVideo.subscriptionOptions(
-      {
-        videoUrl: generation.videoUrl,
-        prompt: generation.prompt,
-        styleId: generation.styleId,
-        ...(apiKey ? { apiKey } : {}),
-      },
-      {
-        enabled: true,
-        onData: async (data: any) => {
-          const eventData = data.data;
+  // Check if this is a video-to-video transformation
+  const isVideoToVideo = generation.isVideoToVideo || generation.videoUrl;
 
-          if (eventData.type === "progress") {
-            onProgress(
-              videoId,
-              eventData.progress || 0,
-              eventData.status || "Transforming video...",
-            );
-          } else if (eventData.type === "complete") {
-            onComplete(
-              videoId,
-              eventData.videoUrl,
-              eventData.duration || generation.duration || 3,
-            );
-          } else if (eventData.type === "error") {
-            onError(videoId, eventData.error);
-          }
-        },
-        onError: (error) => {
-          console.error("Video transformation error:", error);
-          onError(videoId, error.message || "Video transformation failed");
-        },
-      },
-    );
-  } else if (generation.imageUrl) {
-    // Image-to-video conversion
+  if (generation.imageUrl || generation.videoUrl) {
+    // Both image-to-video and video-to-video use the same endpoint with multiconditioning
     subscriptionOptions = useTRPC().generateImageToVideo.subscriptionOptions(
       {
-        imageUrl: generation.imageUrl,
+        imageUrl: generation.videoUrl || generation.imageUrl, // Use video URL if available, otherwise image URL
         prompt: generation.prompt,
         duration: generation.duration || 5,
-        modelId: generation.modelId || "ltx-video", // Default to ltx-video
+        modelId: generation.modelId || "ltx-video-multiconditioning", // Default to multiconditioning model
         resolution: generation.resolution || "720p",
         cameraFixed: generation.cameraFixed,
         seed: generation.seed,
+        isVideoToVideo: isVideoToVideo,
         // Include all model-specific fields
         ...Object.fromEntries(
           Object.entries(generation).filter(
             ([key]) =>
-              !["imageUrl", "videoUrl", "sourceImageId", "toastId"].includes(
-                key,
-              ),
+              ![
+                "imageUrl",
+                "videoUrl",
+                "sourceImageId",
+                "sourceVideoId",
+                "toastId",
+              ].includes(key),
           ),
         ),
         ...(apiKey ? { apiKey } : {}),
@@ -90,7 +62,10 @@ export const StreamingVideo: React.FC<StreamingVideoProps> = ({
             onProgress(
               videoId,
               eventData.progress || 0,
-              eventData.status || "Converting image to video...",
+              eventData.status ||
+                (isVideoToVideo
+                  ? "Transforming video..."
+                  : "Converting image to video..."),
             );
           } else if (eventData.type === "complete") {
             onComplete(
@@ -103,8 +78,19 @@ export const StreamingVideo: React.FC<StreamingVideoProps> = ({
           }
         },
         onError: (error) => {
-          console.error("Image-to-video conversion error:", error);
-          onError(videoId, error.message || "Image-to-video conversion failed");
+          console.error(
+            isVideoToVideo
+              ? "Video-to-video transformation error:"
+              : "Image-to-video conversion error:",
+            error,
+          );
+          onError(
+            videoId,
+            error.message ||
+              (isVideoToVideo
+                ? "Video-to-video transformation failed"
+                : "Image-to-video conversion failed"),
+          );
         },
       },
     );
