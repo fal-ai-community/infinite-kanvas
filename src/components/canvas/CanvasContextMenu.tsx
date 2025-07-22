@@ -123,7 +123,10 @@ export const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
             setCroppingImageId(selectedIds[0]);
           }
         }}
-        disabled={selectedIds.length !== 1}
+        disabled={
+          selectedIds.length !== 1 ||
+          videos?.some((v) => selectedIds.includes(v.id))
+        }
         className="flex items-center gap-2"
       >
         <Crop className="h-4 w-4" />
@@ -131,7 +134,10 @@ export const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
       </ContextMenuItem>
       <ContextMenuItem
         onClick={handleRemoveBackground}
-        disabled={selectedIds.length === 0}
+        disabled={
+          selectedIds.length === 0 ||
+          videos?.some((v) => selectedIds.includes(v.id))
+        }
         className="flex items-center gap-2"
       >
         <Scissors className="h-4 w-4" />
@@ -179,12 +185,18 @@ export const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
         )}
       <ContextMenuSub>
         <ContextMenuSubTrigger
-          disabled={selectedIds.length !== 1}
+          disabled={
+            selectedIds.length !== 1 ||
+            videos?.some((v) => selectedIds.includes(v.id))
+          }
           className="flex items-center gap-2"
           onMouseEnter={() => {
             // Reset input value and set target when hovering over the submenu trigger
             setIsolateInputValue("");
-            if (selectedIds.length === 1) {
+            if (
+              selectedIds.length === 1 &&
+              !videos?.some((v) => v.id === selectedIds[0])
+            ) {
               setIsolateTarget(selectedIds[0]);
             }
           }}
@@ -269,7 +281,10 @@ export const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
       </ContextMenuItem>
       <ContextMenuSub>
         <ContextMenuSubTrigger
-          disabled={selectedIds.length === 0}
+          disabled={
+            selectedIds.length === 0 ||
+            videos?.some((v) => selectedIds.includes(v.id))
+          }
           className="flex items-center gap-2"
         >
           <Layers className="h-4 w-4" />

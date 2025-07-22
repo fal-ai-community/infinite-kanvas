@@ -207,7 +207,7 @@ export const ImageToVideoDialog: React.FC<ImageToVideoDialogProps> = ({
             {/* Panel */}
             <div className="fixed top-0 right-0 h-full w-96 bg-white shadow-xl z-50 transform transition-transform duration-300 ease-in-out">
               <div className="h-full flex flex-col">
-                <div className="flex items-center justify-between p-4 border-b bg-gray-50">
+                <div className="flex items-center justify-between p-3 border-b bg-gray-50">
                   <h3 className="font-semibold text-lg">Advanced Options</h3>
                   <Button
                     type="button"

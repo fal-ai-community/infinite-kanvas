@@ -45,7 +45,7 @@ export const VideoModelSelector: React.FC<VideoModelSelectorProps> = ({
       {models.map((model) => (
         <option key={model.id} value={model.id}>
           {model.name} — ${model.pricing.costPerVideo.toFixed(2)}/video
-          {model.isDefault ? " (Recommended)" : ""}
+          {model.isDefault ? "" : ""}
         </option>
       ))}
     </select>

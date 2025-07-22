@@ -1590,12 +1590,15 @@ export default function OverlayPage() {
     // Save to history before deleting
     saveToHistory();
     setImages((prev) => prev.filter((img) => !selectedIds.includes(img.id)));
+    setVideos((prev) => prev.filter((vid) => !selectedIds.includes(vid.id)));
     setSelectedIds([]);
   };
 
   const handleDuplicate = () => {
     // Save to history before duplicating
     saveToHistory();
+
+    // Duplicate selected images
     const selectedImages = images.filter((img) => selectedIds.includes(img.id));
     const newImages = selectedImages.map((img) => ({
       ...img,
@@ -1603,8 +1606,29 @@ export default function OverlayPage() {
       x: img.x + 20,
       y: img.y + 20,
     }));
+
+    // Duplicate selected videos
+    const selectedVideos = videos.filter((vid) => selectedIds.includes(vid.id));
+    const newVideos = selectedVideos.map((vid) => ({
+      ...vid,
+      id: `vid-${Date.now()}-${Math.random()}`,
+      x: vid.x + 20,
+      y: vid.y + 20,
+      // Reset playback state for duplicated videos
+      currentTime: 0,
+      isPlaying: false,
+    }));
+
+    // Update both arrays
     setImages((prev) => [...prev, ...newImages]);
-    setSelectedIds(newImages.map((img) => img.id));
+    setVideos((prev) => [...prev, ...newVideos]);
+
+    // Select all duplicated items
+    const newIds = [
+      ...newImages.map((img) => img.id),
+      ...newVideos.map((vid) => vid.id),
+    ];
+    setSelectedIds(newIds);
   };
 
   const handleRemoveBackground = async () => {

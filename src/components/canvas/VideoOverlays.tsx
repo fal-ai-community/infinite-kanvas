@@ -28,17 +28,19 @@ export const VideoOverlays: React.FC<VideoOverlaysProps> = ({
           {/* Video playback indicator - only visible when loaded and not playing */}
           {!video.isPlaying && video.isLoaded && (
             <div
-              className="absolute bg-none text-white px-1 py-0.5 text-xs"
+              className="absolute bg-none text-white px-1 py-0.5"
               style={{
                 position: "absolute",
-                top: video.y * viewport.scale + viewport.y + 5,
-                left: video.x * viewport.scale + viewport.x + 5,
+                top: video.y * viewport.scale + viewport.y + 5 * viewport.scale,
+                left:
+                  video.x * viewport.scale + viewport.x + 5 * viewport.scale,
                 zIndex: 40,
                 pointerEvents: "none",
                 visibility: video.isLoaded ? "visible" : "hidden",
                 display: video.isLoaded ? "block" : "none",
                 opacity: hiddenVideoControlsIds.has(video.id) ? 0 : 1,
                 transition: "opacity 0.05s ease-in-out",
+                fontSize: `${12 * viewport.scale}px`,
               }}
             >
               ▶
@@ -53,8 +55,8 @@ export const VideoOverlays: React.FC<VideoOverlaysProps> = ({
                 top:
                   (video.y + video.height) * viewport.scale + viewport.y + 10,
                 left: video.x * viewport.scale + viewport.x,
-                zIndex: 20,
-                width: Math.max(250, video.width * viewport.scale),
+                zIndex: 10,
+                width: Math.max(video.width * viewport.scale, 180),
                 opacity: hiddenVideoControlsIds.has(video.id) ? 0 : 1,
                 transition: "opacity 0.05s ease-in-out",
               }}
