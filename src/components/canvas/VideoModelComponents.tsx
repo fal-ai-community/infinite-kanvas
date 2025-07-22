@@ -437,6 +437,7 @@ export const RemoveVideoBackgroundDialog: React.FC<
 > = ({ isOpen, onClose, onProcess, videoUrl, videoDuration, isProcessing }) => {
   const [backgroundColor, setBackgroundColor] = useState<string>("transparent");
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [isLoadingPreview, setIsLoadingPreview] = useState<boolean>(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   // Format time as MM:SS
@@ -446,19 +447,31 @@ export const RemoveVideoBackgroundDialog: React.FC<
     return `${mins} minute${mins !== 1 ? "s" : ""} ${secs} second${secs !== 1 ? "s" : ""}`;
   };
 
+  // Reset preview when dialog closes
+  useEffect(() => {
+    if (!isOpen) {
+      setPreviewUrl(null);
+      setIsLoadingPreview(false);
+    }
+  }, [isOpen]);
+
   // Extract first frame when video URL changes
   useEffect(() => {
     if (videoUrl && isOpen) {
+      setIsLoadingPreview(true);
       const video = document.createElement("video");
       video.src = videoUrl;
       video.crossOrigin = "anonymous";
 
-      video.addEventListener("loadedmetadata", () => {
+      // Add preload to speed up loading
+      video.preload = "metadata";
+
+      const handleLoadedData = () => {
         // Seek to the first frame
         video.currentTime = 0.1;
-      });
+      };
 
-      video.addEventListener("seeked", () => {
+      const handleSeeked = () => {
         // Create canvas and extract frame
         const canvas = document.createElement("canvas");
         canvas.width = video.videoWidth;
@@ -467,8 +480,20 @@ export const RemoveVideoBackgroundDialog: React.FC<
         if (ctx) {
           ctx.drawImage(video, 0, 0);
           setPreviewUrl(canvas.toDataURL("image/png"));
+          setIsLoadingPreview(false);
         }
-      });
+      };
+
+      video.addEventListener("loadeddata", handleLoadedData);
+      video.addEventListener("seeked", handleSeeked);
+
+      // Start loading
+      video.load();
+
+      return () => {
+        video.removeEventListener("loadeddata", handleLoadedData);
+        video.removeEventListener("seeked", handleSeeked);
+      };
     }
   }, [videoUrl, isOpen]);
 
@@ -509,18 +534,30 @@ export const RemoveVideoBackgroundDialog: React.FC<
 
           <div className="mt-4 space-y-4">
             {/* Preview */}
-            {previewUrl && (
-              <div className="flex justify-center">
-                <img
-                  src={previewUrl}
-                  alt="Video preview"
-                  className="max-w-[200px] max-h-[150px] rounded-md border"
-                />
+            <div className="flex justify-center">
+              <div className="w-[360px] h-[180px] border rounded-md overflow-hidden bg-gray-50 relative">
+                {isLoadingPreview ? (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <SpinnerIcon className="h-8 w-8 animate-spin text-gray-400" />
+                  </div>
+                ) : previewUrl ? (
+                  <img
+                    src={previewUrl}
+                    alt="Video preview"
+                    className="w-full h-full object-contain"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <span className="text-gray-400 text-sm">
+                      No preview available
+                    </span>
+                  </div>
+                )}
               </div>
-            )}
+            </div>
 
             {/* Duration and cost estimation */}
-            <Alert className="py-2">
+            <Alert className="py-2 [&>svg]:w-[16px] [&>svg]:h-[16px]">
               <AlertDescription className="text-sm">
                 <span className="font-medium">
                   ${(videoDuration * 0.14).toFixed(2)}
@@ -555,18 +592,39 @@ export const RemoveVideoBackgroundDialog: React.FC<
             </div>
           </div>
 
-          <DialogFooter className="mt-6">
-            <Button type="button" onClick={onClose} disabled={isProcessing}>
+          <DialogFooter className="mt-6 flex justify-between">
+            <Button
+              type="button"
+              variant="default"
+              onClick={onClose}
+              disabled={isProcessing}
+              className="border border-gray-300 bg-white hover:bg-gray-50"
+            >
               Cancel
             </Button>
-            <Button type="submit" variant="primary" disabled={isProcessing}>
+            <Button
+              type="submit"
+              variant="primary"
+              disabled={isProcessing}
+              className="bg-primary text-white hover:bg-[#5b21b6] flex items-center gap-2"
+            >
               {isProcessing ? (
                 <>
-                  <SpinnerIcon className="h-4 w-4 animate-spin mr-2" />
+                  <SpinnerIcon className="h-4 w-4 animate-spin" />
                   Processing...
                 </>
               ) : (
-                "Process Video"
+                <div className="flex items-center gap-2">
+                  <span>Run</span>
+                  <span className="flex flex-row space-x-0.5">
+                    <kbd className="flex items-center justify-center tracking-tighter rounded border px-1 font-mono bg-white/10 border-white/10 h-6 min-w-6 text-xs">
+                      ⌘
+                    </kbd>
+                    <kbd className="flex items-center justify-center tracking-tighter rounded border px-1 font-mono bg-white/10 border-white/10 h-6 min-w-6 text-xs">
+                      ↵
+                    </kbd>
+                  </span>
+                </div>
               )}
             </Button>
           </DialogFooter>
