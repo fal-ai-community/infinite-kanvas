@@ -149,7 +149,6 @@ export const VideoToVideoDialog: React.FC<VideoToVideoDialogProps> = ({
                 Object.keys(selectedModel.options).length > 5 && (
                   <Button
                     type="button"
-                    variant="outline"
                     onClick={() => setShowMoreOptions(true)}
                     className="w-full flex items-center justify-center gap-2 text-sm"
                   >
@@ -161,12 +160,7 @@ export const VideoToVideoDialog: React.FC<VideoToVideoDialogProps> = ({
           </div>
 
           <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onClose}
-              disabled={isConverting}
-            >
+            <Button type="button" onClick={onClose} disabled={isConverting}>
               Cancel
             </Button>
             <Button type="submit" disabled={isConverting}>
@@ -198,7 +192,6 @@ export const VideoToVideoDialog: React.FC<VideoToVideoDialogProps> = ({
                   <h3 className="font-semibold text-lg">Advanced Options</h3>
                   <Button
                     type="button"
-                    variant="ghost"
                     size="sm"
                     onClick={() => setShowMoreOptions(false)}
                     className="h-8 w-8 p-0"

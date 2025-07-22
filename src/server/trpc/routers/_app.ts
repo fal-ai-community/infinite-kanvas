@@ -390,6 +390,15 @@ export const appRouter = router({
                     : undefined,
                 enable_safety_checker: true,
               };
+            } else if (modelId === "bria-video-background-removal") {
+              // Bria video background removal
+              inputParams = {
+                video_url: input.imageUrl, // imageUrl contains the video URL
+                background_color:
+                  (input as any).backgroundColor ||
+                  model.defaults.backgroundColor ||
+                  "Black",
+              };
             } else {
               // SeeDANCE models and others
               inputParams = {

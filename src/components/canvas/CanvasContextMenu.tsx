@@ -52,6 +52,7 @@ interface CanvasContextMenuProps {
   handleConvertToVideo?: (imageId: string) => void;
   handleVideoToVideo?: (videoId: string) => void;
   handleExtendVideo?: (videoId: string) => void;
+  handleRemoveVideoBackground?: (videoId: string) => void;
   setCroppingImageId: (id: string | null) => void;
   setIsolateInputValue: (value: string) => void;
   setIsolateTarget: (id: string | null) => void;
@@ -78,6 +79,7 @@ export const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
   handleConvertToVideo,
   handleVideoToVideo,
   handleExtendVideo,
+  handleRemoveVideoBackground,
   setCroppingImageId,
   setIsolateInputValue,
   setIsolateTarget,
@@ -181,6 +183,19 @@ export const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
           >
             <FilePlus className="h-4 w-4" />
             Extend Video
+          </ContextMenuItem>
+        )}
+      {selectedIds.length === 1 &&
+        handleRemoveVideoBackground &&
+        videos?.some((v) => v.id === selectedIds[0]) && (
+          <ContextMenuItem
+            onClick={() => {
+              handleRemoveVideoBackground(selectedIds[0]);
+            }}
+            className="flex items-center gap-2"
+          >
+            <Scissors className="h-4 w-4" />
+            Remove Video Background
           </ContextMenuItem>
         )}
       <ContextMenuSub>

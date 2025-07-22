@@ -62,6 +62,8 @@ import { VideoControls } from "@/components/canvas/VideoControls";
 import { ImageToVideoDialog } from "@/components/canvas/ImageToVideoDialog";
 import { VideoToVideoDialog } from "@/components/canvas/VideoToVideoDialog";
 import { ExtendVideoDialog } from "@/components/canvas/ExtendVideoDialog";
+import { RemoveVideoBackgroundDialog } from "@/components/canvas/VideoModelComponents";
+import { getVideoModelById } from "@/lib/video-models";
 
 // Import types
 import type {
@@ -180,6 +182,16 @@ export default function OverlayPage() {
     string | null
   >(null);
   const [isExtendingVideo, setIsExtendingVideo] = useState(false);
+  const [
+    isRemoveVideoBackgroundDialogOpen,
+    setIsRemoveVideoBackgroundDialogOpen,
+  ] = useState(false);
+  const [
+    selectedVideoForBackgroundRemoval,
+    setSelectedVideoForBackgroundRemoval,
+  ] = useState<string | null>(null);
+  const [isRemovingVideoBackground, setIsRemovingVideoBackground] =
+    useState(false);
   const [customApiKey, setCustomApiKey] = useState<string>("");
   const [tempApiKey, setTempApiKey] = useState<string>("");
   const [_, setIsSaving] = useState(false);
@@ -334,14 +346,11 @@ export default function OverlayPage() {
       setActiveVideoGenerations((prev) => {
         const newMap = new Map(prev);
         newMap.set(generationId, {
+          ...settings, // Include all settings first
           imageUrl: videoUrl, // Using imageUrl field for video URL
-          prompt: settings.prompt || "",
           duration: video.duration || settings.duration || 5,
-          modelId: settings.modelId || "ltx-video-multiconditioning",
-          resolution: settings.resolution || "720p",
           isVideoToVideo: true,
           sourceVideoId: selectedVideoForVideo,
-          ...settings, // Include all other settings
         });
         return newMap;
       });
@@ -426,15 +435,13 @@ export default function OverlayPage() {
       setActiveVideoGenerations((prev) => {
         const newMap = new Map(prev);
         newMap.set(generationId, {
+          ...settings, // Include all settings first
           imageUrl: videoUrl, // Using imageUrl field for video URL
           prompt: settings.prompt || "Continue the video...",
           duration: video.duration || settings.duration || 5,
-          modelId: settings.modelId || "ltx-video-multiconditioning",
-          resolution: settings.resolution || "720p",
           isVideoToVideo: true,
           isVideoExtension: true,
           sourceVideoId: selectedVideoForExtend,
-          ...settings, // Include all other settings
         });
         return newMap;
       });
@@ -500,6 +507,24 @@ export default function OverlayPage() {
       // Get the generation data to check for source image ID
       const generation = activeVideoGenerations.get(videoId);
       const sourceImageId = generation?.sourceImageId || selectedImageForVideo;
+      const isBackgroundRemoval =
+        generation?.modelId === "bria-video-background-removal";
+
+      // Dismiss progress toast if it exists
+      if (generation?.toastId) {
+        const toastElement = document.querySelector(
+          `[data-toast-id="${generation.toastId}"]`,
+        );
+        if (toastElement) {
+          // Trigger dismiss by clicking the close button
+          const closeButton = toastElement.querySelector(
+            "[data-radix-toast-close]",
+          );
+          if (closeButton instanceof HTMLElement) {
+            closeButton.click();
+          }
+        }
+      }
 
       // Find the original image if this was an image-to-video conversion
       if (sourceImageId) {
@@ -563,10 +588,8 @@ export default function OverlayPage() {
               duration: duration,
               volume: 1,
               muted: false,
-              loop: false,
-              playbackRate: 1,
+              isLooping: false,
               isVideo: true as const,
-              createdAt: Date.now(),
             };
 
             // Add the transformed video to the canvas
@@ -580,6 +603,14 @@ export default function OverlayPage() {
                 title: "Video extended successfully",
                 description:
                   "The extended video has been added to the right of the source video.",
+              });
+            } else if (
+              generation?.modelId === "bria-video-background-removal"
+            ) {
+              toast({
+                title: "Background removed successfully",
+                description:
+                  "The video with removed background has been added to the right of the source video.",
               });
             } else {
               toast({
@@ -620,8 +651,13 @@ export default function OverlayPage() {
         return newMap;
       });
 
-      setIsConvertingToVideo(false);
-      setSelectedImageForVideo(null);
+      // Reset appropriate flags based on generation type
+      if (isBackgroundRemoval) {
+        setIsRemovingVideoBackground(false);
+      } else {
+        setIsConvertingToVideo(false);
+        setSelectedImageForVideo(null);
+      }
     } catch (error) {
       console.error("Error completing video generation:", error);
 
@@ -647,8 +683,16 @@ export default function OverlayPage() {
   // Function to handle video generation errors
   const handleVideoGenerationError = (videoId: string, error: string) => {
     console.error("Video generation error:", error);
+
+    // Check if this was a background removal
+    const generation = activeVideoGenerations.get(videoId);
+    const isBackgroundRemoval =
+      generation?.modelId === "bria-video-background-removal";
+
     toast({
-      title: "Video generation failed",
+      title: isBackgroundRemoval
+        ? "Background removal failed"
+        : "Video generation failed",
       description: error,
       variant: "destructive",
     });
@@ -660,7 +704,14 @@ export default function OverlayPage() {
       return newMap;
     });
 
-    setIsConvertingToVideo(false);
+    // Reset appropriate flags
+    if (isBackgroundRemoval) {
+      setIsRemovingVideoBackground(false);
+    } else {
+      setIsConvertingToVideo(false);
+      setIsTransformingVideo(false);
+      setIsExtendingVideo(false);
+    }
   };
 
   // Function to handle video generation progress
@@ -1643,6 +1694,126 @@ export default function OverlayPage() {
       falClient,
       setIsApiKeyDialogOpen,
     });
+  };
+
+  // Function to handle the "Remove Background from Video" option in the context menu
+  const handleRemoveVideoBackground = (videoId: string) => {
+    const video = videos.find((vid) => vid.id === videoId);
+    if (!video) return;
+
+    setSelectedVideoForBackgroundRemoval(videoId);
+    setIsRemoveVideoBackgroundDialogOpen(true);
+  };
+
+  // Function to handle the video background removal
+  const handleVideoBackgroundRemoval = async (backgroundColor: string) => {
+    if (!selectedVideoForBackgroundRemoval) return;
+
+    const video = videos.find(
+      (vid) => vid.id === selectedVideoForBackgroundRemoval,
+    );
+    if (!video) return;
+
+    try {
+      setIsRemovingVideoBackground(true);
+
+      // Close the dialog
+      setIsRemoveVideoBackgroundDialogOpen(false);
+
+      // Don't show a toast here - the StreamingVideo component will handle progress
+
+      // Upload video if it's a data URL or blob URL
+      let videoUrl = video.src;
+      if (videoUrl.startsWith("data:") || videoUrl.startsWith("blob:")) {
+        const uploadResult = await falClient.storage.upload(
+          await (await fetch(videoUrl)).blob(),
+        );
+        videoUrl = uploadResult;
+      }
+
+      // Create a unique ID for this generation
+      const generationId = `bg_removal_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+
+      // Map the background color to the API's expected format
+      const colorMap: Record<string, string> = {
+        transparent: "Transparent",
+        black: "Black",
+        white: "White",
+        gray: "Gray",
+        red: "Red",
+        green: "Green",
+        blue: "Blue",
+        yellow: "Yellow",
+        cyan: "Cyan",
+        magenta: "Magenta",
+        orange: "Orange",
+      };
+
+      // Map to API format
+      const apiBackgroundColor = colorMap[backgroundColor] || "Black";
+
+      // Add to active generations
+      setActiveVideoGenerations((prev) => {
+        const newMap = new Map(prev);
+        newMap.set(generationId, {
+          imageUrl: videoUrl,
+          prompt: `Removing background from video`,
+          duration: video.duration || 5,
+          modelId: "bria-video-background-removal",
+          modelConfig: getVideoModelById("bria-video-background-removal"),
+          sourceVideoId: video.id,
+          backgroundColor: apiBackgroundColor,
+        });
+        return newMap;
+      });
+
+      // Create a persistent toast that will stay visible until the conversion completes
+      const toastId = toast({
+        title: "Removing background from video",
+        description: "This may take several minutes...",
+        duration: Infinity, // Make the toast stay until manually dismissed
+      }).id;
+
+      // Store the toast ID with the generation for later reference
+      setActiveVideoGenerations((prev) => {
+        const newMap = new Map(prev);
+        const generation = newMap.get(generationId);
+        if (generation) {
+          newMap.set(generationId, {
+            ...generation,
+            toastId,
+          });
+        }
+        return newMap;
+      });
+
+      // Remove the direct API call since StreamingVideo will handle it
+      // The StreamingVideo component will handle the actual API call and progress updates
+    } catch (error) {
+      console.error("Error removing video background:", error);
+      toast({
+        title: "Error processing video",
+        description:
+          error instanceof Error ? error.message : "An error occurred",
+        variant: "destructive",
+      });
+
+      // Remove from active generations
+      setActiveVideoGenerations((prev) => {
+        const newMap = new Map(prev);
+        const generationId = Array.from(prev.keys()).find(
+          (key) =>
+            prev.get(key)?.sourceVideoId === selectedVideoForBackgroundRemoval,
+        );
+        if (generationId) {
+          newMap.delete(generationId);
+        }
+        return newMap;
+      });
+    } finally {
+      // Don't set isRemovingVideoBackground to false here - let the completion/error handlers do it
+      setSelectedVideoForBackgroundRemoval(null);
+    }
   };
 
   const sendToFront = useCallback(() => {
@@ -2722,6 +2893,7 @@ export default function OverlayPage() {
               handleConvertToVideo={handleConvertToVideo}
               handleVideoToVideo={handleVideoToVideo}
               handleExtendVideo={handleExtendVideo}
+              handleRemoveVideoBackground={handleRemoveVideoBackground}
               setCroppingImageId={setCroppingImageId}
               setIsolateInputValue={setIsolateInputValue}
               setIsolateTarget={setIsolateTarget}
@@ -3399,6 +3571,28 @@ export default function OverlayPage() {
             : ""
         }
         isExtending={isExtendingVideo}
+      />
+
+      <RemoveVideoBackgroundDialog
+        isOpen={isRemoveVideoBackgroundDialogOpen}
+        onClose={() => {
+          setIsRemoveVideoBackgroundDialogOpen(false);
+          setSelectedVideoForBackgroundRemoval(null);
+        }}
+        onProcess={handleVideoBackgroundRemoval}
+        videoUrl={
+          selectedVideoForBackgroundRemoval
+            ? videos.find((vid) => vid.id === selectedVideoForBackgroundRemoval)
+                ?.src || ""
+            : ""
+        }
+        videoDuration={
+          selectedVideoForBackgroundRemoval
+            ? videos.find((vid) => vid.id === selectedVideoForBackgroundRemoval)
+                ?.duration || 0
+            : 0
+        }
+        isProcessing={isRemovingVideoBackground}
       />
 
       {/* Video Generation Streaming Components */}

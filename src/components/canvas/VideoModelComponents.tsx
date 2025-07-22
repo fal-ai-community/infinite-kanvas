@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -16,6 +16,54 @@ import {
   type VideoModelConfig,
   type VideoModelOption,
 } from "@/lib/video-models";
+import * as RadioGroupPrimitive from "@radix-ui/react-radio-group";
+import { cn } from "@/lib/utils";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { SpinnerIcon } from "@/components/icons";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+
+// RadioGroup components
+export const RadioGroup = React.forwardRef<
+  React.ElementRef<typeof RadioGroupPrimitive.Root>,
+  React.ComponentPropsWithoutRef<typeof RadioGroupPrimitive.Root>
+>(({ className, ...props }, ref) => {
+  return (
+    <RadioGroupPrimitive.Root
+      className={cn("grid gap-2", className)}
+      {...props}
+      ref={ref}
+    />
+  );
+});
+RadioGroup.displayName = RadioGroupPrimitive.Root.displayName;
+
+export const RadioGroupItem = React.forwardRef<
+  React.ElementRef<typeof RadioGroupPrimitive.Item>,
+  React.ComponentPropsWithoutRef<typeof RadioGroupPrimitive.Item>
+>(({ className, ...props }, ref) => {
+  return (
+    <RadioGroupPrimitive.Item
+      ref={ref}
+      className={cn(
+        "aspect-square h-4 w-4 rounded-full border border-gray-300 text-primary shadow focus:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
+        className,
+      )}
+      {...props}
+    >
+      <RadioGroupPrimitive.Indicator className="flex items-center justify-center">
+        <div className="h-2 w-2 rounded-full bg-current" />
+      </RadioGroupPrimitive.Indicator>
+    </RadioGroupPrimitive.Item>
+  );
+});
+RadioGroupItem.displayName = RadioGroupPrimitive.Item.displayName;
 
 // VideoModelSelector Component
 interface VideoModelSelectorProps {
@@ -371,5 +419,159 @@ export const VideoModelOptions: React.FC<VideoModelOptionsProps> = ({
     <div className="space-y-4">
       {optionsToRender.map(([key, option]) => renderOption(key, option))}
     </div>
+  );
+};
+
+// RemoveVideoBackgroundDialog Component
+interface RemoveVideoBackgroundDialogProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onProcess: (backgroundColor: string) => void;
+  videoUrl: string;
+  videoDuration: number; // Duration in seconds
+  isProcessing: boolean;
+}
+
+export const RemoveVideoBackgroundDialog: React.FC<
+  RemoveVideoBackgroundDialogProps
+> = ({ isOpen, onClose, onProcess, videoUrl, videoDuration, isProcessing }) => {
+  const [backgroundColor, setBackgroundColor] = useState<string>("transparent");
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  // Format time as MM:SS
+  const formatTime = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins} minute${mins !== 1 ? "s" : ""} ${secs} second${secs !== 1 ? "s" : ""}`;
+  };
+
+  // Extract first frame when video URL changes
+  useEffect(() => {
+    if (videoUrl && isOpen) {
+      const video = document.createElement("video");
+      video.src = videoUrl;
+      video.crossOrigin = "anonymous";
+
+      video.addEventListener("loadedmetadata", () => {
+        // Seek to the first frame
+        video.currentTime = 0.1;
+      });
+
+      video.addEventListener("seeked", () => {
+        // Create canvas and extract frame
+        const canvas = document.createElement("canvas");
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.drawImage(video, 0, 0);
+          setPreviewUrl(canvas.toDataURL("image/png"));
+        }
+      });
+    }
+  }, [videoUrl, isOpen]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onProcess(backgroundColor);
+  };
+
+  const handleRadioChange = (value: string) => {
+    setBackgroundColor(value);
+  };
+
+  // Define color mappings
+  const colorMap: Record<string, string> = {
+    transparent: "bg-gray-100 border-2 border-dashed border-gray-300",
+    black: "bg-black",
+    white: "bg-white border",
+    gray: "bg-gray-500",
+    red: "bg-red-500",
+    green: "bg-green-500",
+    blue: "bg-blue-500",
+    yellow: "bg-yellow-400",
+    cyan: "bg-cyan-400",
+    magenta: "bg-pink-500",
+    orange: "bg-orange-500",
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-md">
+        <form onSubmit={handleSubmit}>
+          <DialogHeader>
+            <DialogTitle>Remove Video Background</DialogTitle>
+            <DialogDescription>
+              Configure background removal settings for your video
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="mt-4 space-y-4">
+            {/* Preview */}
+            {previewUrl && (
+              <div className="flex justify-center">
+                <img
+                  src={previewUrl}
+                  alt="Video preview"
+                  className="max-w-[200px] max-h-[150px] rounded-md border"
+                />
+              </div>
+            )}
+
+            {/* Duration and cost estimation */}
+            <Alert className="py-2">
+              <AlertDescription className="text-sm">
+                <span className="font-medium">
+                  ${(videoDuration * 0.14).toFixed(2)}
+                </span>{" "}
+                for {Math.floor(videoDuration)}s video • Processing may take
+                several minutes
+              </AlertDescription>
+            </Alert>
+
+            {/* Background color options */}
+            <div className="space-y-3">
+              <Label>Background Color</Label>
+              <RadioGroup
+                value={backgroundColor}
+                onValueChange={handleRadioChange}
+              >
+                <div className="grid grid-cols-2 gap-3">
+                  {Object.entries(colorMap).map(([color, className]) => (
+                    <div key={color} className="flex items-center space-x-3">
+                      <RadioGroupItem value={color} id={color} />
+                      <Label
+                        htmlFor={color}
+                        className="flex items-center space-x-2 font-normal cursor-pointer flex-1"
+                      >
+                        <div className={`w-5 h-5 rounded ${className}`} />
+                        <span className="capitalize">{color}</span>
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              </RadioGroup>
+            </div>
+          </div>
+
+          <DialogFooter className="mt-6">
+            <Button type="button" onClick={onClose} disabled={isProcessing}>
+              Cancel
+            </Button>
+            <Button type="submit" variant="primary" disabled={isProcessing}>
+              {isProcessing ? (
+                <>
+                  <SpinnerIcon className="h-4 w-4 animate-spin mr-2" />
+                  Processing...
+                </>
+              ) : (
+                "Process Video"
+              )}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 };

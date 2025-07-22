@@ -31,7 +31,7 @@ export const StreamingVideo: React.FC<StreamingVideoProps> = ({
     // Both image-to-video and video-to-video use the same endpoint with multiconditioning
     subscriptionOptions = useTRPC().generateImageToVideo.subscriptionOptions(
       {
-        imageUrl: generation.videoUrl || generation.imageUrl, // Use video URL if available, otherwise image URL
+        imageUrl: generation.videoUrl || generation.imageUrl || "", // Use video URL if available, otherwise image URL
         prompt: generation.prompt,
         duration: generation.duration || 5,
         modelId: generation.modelId || "ltx-video-multiconditioning", // Always use multiconditioning model

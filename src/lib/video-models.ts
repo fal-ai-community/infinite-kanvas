@@ -782,6 +782,42 @@ export const VIDEO_MODELS: Record<string, VideoModelConfig> = {
       duration: 3,
     },
   },
+  "bria-video-background-removal": {
+    id: "bria-video-background-removal",
+    name: "Bria Video Background Removal",
+    endpoint: "bria/video/background-removal",
+    category: "video-to-video",
+    pricing: {
+      costPerVideo: 0.14,
+      currency: "USD",
+      unit: "second",
+    },
+    options: {
+      backgroundColor: {
+        name: "backgroundColor",
+        type: "select",
+        label: "Background Color",
+        description: "The color to replace the removed background with",
+        default: "Black",
+        options: [
+          { value: "Transparent", label: "Transparent" },
+          { value: "Black", label: "Black" },
+          { value: "White", label: "White" },
+          { value: "Gray", label: "Gray" },
+          { value: "Red", label: "Red" },
+          { value: "Green", label: "Green" },
+          { value: "Blue", label: "Blue" },
+          { value: "Yellow", label: "Yellow" },
+          { value: "Cyan", label: "Cyan" },
+          { value: "Magenta", label: "Magenta" },
+          { value: "Orange", label: "Orange" },
+        ],
+      },
+    },
+    defaults: {
+      backgroundColor: "Black",
+    },
+  },
 };
 
 export function getVideoModelById(id: string): VideoModelConfig | undefined {

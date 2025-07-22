@@ -177,14 +177,8 @@ export const CanvasVideo: React.FC<CanvasVideoProps> = ({
     videoElement.loop = !!video.isLooping;
   }, [video.isLooping, videoElement]);
 
-  // Pause video when it loses selection to prevent state update errors
-  useEffect(() => {
-    if (!isSelected && video.isPlaying && videoElement) {
-      // Pause the video to prevent ongoing timeupdate events
-      videoElement.pause();
-      onChange({ isPlaying: false });
-    }
-  }, [isSelected, video.isPlaying, videoElement, onChange]);
+  // Note: Videos should continue playing even when not selected
+  // This allows multiple videos to loop simultaneously on the canvas
 
   // Handle transformer
   useEffect(() => {
@@ -287,6 +281,55 @@ export const CanvasVideo: React.FC<CanvasVideoProps> = ({
     onChange,
   ]);
 
+  // Memoize the drag handler to avoid recreating it on every render
+  const handleDragMove = useMemo(
+    () =>
+      throttle((e: any) => {
+        const node = e.target;
+
+        if (selectedIds.includes(video.id) && selectedIds.length > 1) {
+          // Calculate delta from drag start position
+          const startPos = dragStartPositions.get(video.id);
+          if (startPos) {
+            const deltaX = node.x() - startPos.x;
+            const deltaY = node.y() - startPos.y;
+
+            // Update all selected items relative to their start positions
+            setVideos((prev) =>
+              prev.map((vid) => {
+                if (vid.id === video.id) {
+                  return {
+                    ...vid,
+                    x: node.x(),
+                    y: node.y(),
+                    isVideo: true as const,
+                  };
+                } else if (selectedIds.includes(vid.id)) {
+                  const vidStartPos = dragStartPositions.get(vid.id);
+                  if (vidStartPos) {
+                    return {
+                      ...vid,
+                      x: vidStartPos.x + deltaX,
+                      y: vidStartPos.y + deltaY,
+                      isVideo: true as const,
+                    };
+                  }
+                }
+                return vid;
+              }),
+            );
+          }
+        } else {
+          // Single item drag - just update this video
+          onChange({
+            x: node.x(),
+            y: node.y(),
+          });
+        }
+      }, 16), // ~60fps throttle
+    [selectedIds, video.id, dragStartPositions, setVideos, onChange],
+  );
+
   return (
     <>
       <KonvaImage
@@ -354,53 +397,7 @@ export const CanvasVideo: React.FC<CanvasVideoProps> = ({
           }
           onDragStart();
         }}
-        onDragMove={useMemo(
-          () =>
-            throttle((e: any) => {
-              const node = e.target;
-
-              if (selectedIds.includes(video.id) && selectedIds.length > 1) {
-                // Calculate delta from drag start position
-                const startPos = dragStartPositions.get(video.id);
-                if (startPos) {
-                  const deltaX = node.x() - startPos.x;
-                  const deltaY = node.y() - startPos.y;
-
-                  // Update all selected items relative to their start positions
-                  setVideos((prev) =>
-                    prev.map((vid) => {
-                      if (vid.id === video.id) {
-                        return {
-                          ...vid,
-                          x: node.x(),
-                          y: node.y(),
-                          isVideo: true as const,
-                        };
-                      } else if (selectedIds.includes(vid.id)) {
-                        const vidStartPos = dragStartPositions.get(vid.id);
-                        if (vidStartPos) {
-                          return {
-                            ...vid,
-                            x: vidStartPos.x + deltaX,
-                            y: vidStartPos.y + deltaY,
-                            isVideo: true as const,
-                          };
-                        }
-                      }
-                      return vid;
-                    }),
-                  );
-                }
-              } else {
-                // Single item drag - just update this video
-                onChange({
-                  x: node.x(),
-                  y: node.y(),
-                });
-              }
-            }, 16), // ~60fps throttle
-          [selectedIds, video.id, dragStartPositions, setVideos, onChange],
-        )}
+        onDragMove={handleDragMove}
         onDragEnd={() => {
           onDragEnd();
         }}

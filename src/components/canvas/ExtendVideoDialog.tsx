@@ -195,7 +195,6 @@ export const ExtendVideoDialog: React.FC<ExtendVideoDialogProps> = ({
                 Object.keys(selectedModel.options).length > 5 && (
                   <Button
                     type="button"
-                    variant="outline"
                     onClick={() => setShowMoreOptions(true)}
                     className="w-full flex items-center justify-center gap-2 text-sm"
                   >
@@ -207,12 +206,7 @@ export const ExtendVideoDialog: React.FC<ExtendVideoDialogProps> = ({
           </div>
 
           <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onClose}
-              disabled={isExtending}
-            >
+            <Button type="button" onClick={onClose} disabled={isExtending}>
               Cancel
             </Button>
             <Button type="submit" disabled={isExtending}>
@@ -244,7 +238,6 @@ export const ExtendVideoDialog: React.FC<ExtendVideoDialogProps> = ({
                   <h3 className="font-semibold text-lg">Advanced Options</h3>
                   <Button
                     type="button"
-                    variant="ghost"
                     size="sm"
                     onClick={() => setShowMoreOptions(false)}
                     className="h-8 w-8 p-0"
