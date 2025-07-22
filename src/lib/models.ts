@@ -116,6 +116,14 @@ export const styleModels: StyleModel[] = [
       "make the character/object look like it was made out of glass, black background",
   },
   {
+    id: "metallic",
+    name: "Metallic Objects",
+    imageSrc: "/images/styles/metallic.png",
+    prompt: "Make it metallic with a black background and a 3D perspective",
+    loraUrl:
+      "https://huggingface.co/ilkerzgi/metallic-objects-kontext-dev-lora/blob/main/metallic-objects-kontext-dev-lora.safetensors",
+  },
+  {
     id: "anime",
     name: "Anime Style",
     imageSrc: "/images/styles/anime.jpg",
