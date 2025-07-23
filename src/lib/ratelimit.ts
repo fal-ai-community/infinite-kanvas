@@ -44,19 +44,23 @@ console.log(
 export async function shouldLimitRequest(
   limiter: RateLimiter,
   ip: string,
+  keyPrefix?: string,
 ): Promise<LimitResult> {
-  console.log(`[DEBUG] Checking rate limit for IP: ${ip}`);
+  console.log(`[DEBUG] Checking rate limit for IP: ${ip}${keyPrefix ? ` with prefix: ${keyPrefix}` : ''}`);
 
   if (!IS_RATE_LIMITER_ENABLED) {
     console.log(`[DEBUG] Rate limiter disabled, allowing request`);
     return { shouldLimitRequest: false };
   }
 
+  // Use different keys for different types of rate limits
+  const rateLimitKey = keyPrefix ? `${keyPrefix}:${ip}` : ip;
+
   const limits = ["perMinute", "perHour", "perDay"] as const;
   const results = await Promise.all(
     limits.map(async (limit) => {
-      const result = await limiter[limit].limit(ip);
-      console.log(`[DEBUG] ${limit} limit result:`, {
+      const result = await limiter[limit].limit(rateLimitKey);
+      console.log(`[DEBUG] ${limit} limit result for key ${rateLimitKey}:`, {
         success: result.success,
         remaining: result.remaining,
         reset: result.reset,
