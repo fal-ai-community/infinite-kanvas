@@ -365,8 +365,8 @@ export const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
         </ContextMenuSubContent>
       </ContextMenuSub>
       <ContextMenuItem
-        onClick={() => {
-          selectedIds.forEach((id) => {
+        onClick={async () => {
+          for (const id of selectedIds) {
             const image = images.find((img) => img.id === id);
             const video = videos?.find((vid) => vid.id === id);
 
@@ -376,12 +376,30 @@ export const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
               link.href = image.src;
               link.click();
             } else if (video) {
-              const link = document.createElement("a");
-              link.download = `video-${Date.now()}.mp4`;
-              link.href = video.src;
-              link.click();
+              try {
+                // For videos, we need to fetch as blob to force download
+                const response = await fetch(video.src);
+                const blob = await response.blob();
+                const blobUrl = URL.createObjectURL(blob);
+
+                const link = document.createElement("a");
+                link.download = `video-${Date.now()}.mp4`;
+                link.href = blobUrl;
+                link.click();
+
+                // Clean up the blob URL after a short delay
+                setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
+              } catch (error) {
+                console.error("Failed to download video:", error);
+                // Fallback to regular download if fetch fails
+                const link = document.createElement("a");
+                link.download = `video-${Date.now()}.mp4`;
+                link.href = video.src;
+                link.target = "_blank";
+                link.click();
+              }
             }
-          });
+          }
         }}
         disabled={selectedIds.length === 0}
         className="flex items-center gap-2"
