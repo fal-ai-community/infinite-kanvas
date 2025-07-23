@@ -9,7 +9,11 @@ const fal = createFalClient({
 });
 
 // Helper function to check rate limits or use custom API key
-async function getFalClient(apiKey: string | undefined, ctx: any) {
+async function getFalClient(
+  apiKey: string | undefined,
+  ctx: any,
+  isVideo: boolean = false,
+) {
   if (apiKey) {
     return createFalClient({
       credentials: () => apiKey,
@@ -20,22 +24,34 @@ async function getFalClient(apiKey: string | undefined, ctx: any) {
   const { shouldLimitRequest } = await import("@/lib/ratelimit");
   const { createRateLimiter } = await import("@/lib/ratelimit");
 
-  const limiter = {
-    perMinute: createRateLimiter(50, "60 s"),
-    perHour: createRateLimiter(250, "60 m"),
-    perDay: createRateLimiter(500, "24 h"),
-  };
+  // Different rate limits for video vs regular operations
+  const limiter = isVideo
+    ? {
+        perMinute: createRateLimiter(1, "60 s"),
+        perHour: createRateLimiter(1, "60 m"),
+        perDay: createRateLimiter(1, "24 h"),
+      }
+    : {
+        perMinute: createRateLimiter(50, "60 s"),
+        perHour: createRateLimiter(250, "60 m"),
+        perDay: createRateLimiter(500, "24 h"),
+      };
 
   const ip =
     ctx.req?.headers.get?.("x-forwarded-for") ||
     ctx.req?.headers.get?.("x-real-ip") ||
     "unknown";
 
-  const limiterResult = await shouldLimitRequest(limiter, ip);
+  const limiterResult = await shouldLimitRequest(
+    limiter,
+    ip,
+    isVideo ? "video" : undefined,
+  );
   if (limiterResult.shouldLimitRequest) {
-    throw new Error(
-      `Rate limit exceeded per ${limiterResult.period}. Add your FAL API key to bypass rate limits.`,
-    );
+    const errorMessage = isVideo
+      ? `Video generation rate limit exceeded: 1 video per ${limiterResult.period}. Add your FAL API key to bypass rate limits.`
+      : `Rate limit exceeded per ${limiterResult.period}. Add your FAL API key to bypass rate limits.`;
+    throw new Error(errorMessage);
   }
 
   return fal;
@@ -64,7 +80,7 @@ export const appRouter = router({
     )
     .subscription(async function* ({ input, signal, ctx }) {
       try {
-        const falClient = await getFalClient(input.apiKey, ctx);
+        const falClient = await getFalClient(input.apiKey, ctx, true);
 
         // Create a unique ID for this transformation
         const transformationId = `vidtrans_${Date.now()}_${Math.random().toString(36).substring(7)}`;
@@ -167,7 +183,7 @@ export const appRouter = router({
     )
     .subscription(async function* ({ input, signal, ctx }) {
       try {
-        const falClient = await getFalClient(input.apiKey, ctx);
+        const falClient = await getFalClient(input.apiKey, ctx, true);
 
         // Create a unique ID for this generation
         const generationId = `img2vid_${Date.now()}_${Math.random().toString(36).substring(7)}`;
@@ -527,7 +543,7 @@ export const appRouter = router({
     )
     .subscription(async function* ({ input, signal, ctx }) {
       try {
-        const falClient = await getFalClient(input.apiKey, ctx);
+        const falClient = await getFalClient(input.apiKey, ctx, true);
 
         // Create a unique ID for this generation
         const generationId = `vid_${Date.now()}_${Math.random().toString(36).substring(7)}`;
