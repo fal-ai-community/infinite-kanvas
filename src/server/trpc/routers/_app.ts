@@ -28,8 +28,8 @@ async function getFalClient(
   const limiter = isVideo
     ? {
         perMinute: createRateLimiter(1, "60 s"),
-        perHour: createRateLimiter(1, "60 m"),
-        perDay: createRateLimiter(1, "24 h"),
+        perHour: createRateLimiter(10, "60 m"),
+        perDay: createRateLimiter(50, "24 h"),
       }
     : {
         perMinute: createRateLimiter(50, "60 s"),
