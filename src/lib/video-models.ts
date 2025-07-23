@@ -56,7 +56,7 @@ export const VIDEO_MODELS: Record<string, VideoModelConfig> = {
       currency: "USD",
       unit: "video",
     },
-    isDefault: true,
+    isDefault: false,
     options: {
       prompt: {
         name: "prompt",
@@ -296,6 +296,7 @@ export const VIDEO_MODELS: Record<string, VideoModelConfig> = {
     name: "SeeDANCE 1.0 Pro",
     endpoint: "fal-ai/bytedance/seedance/v1/pro/image-to-video",
     category: "image-to-video",
+    isDefault: true,
     pricing: {
       costPerVideo: 0.62,
       currency: "USD",
@@ -495,7 +496,7 @@ export const VIDEO_MODELS: Record<string, VideoModelConfig> = {
       currency: "USD",
       unit: "extension",
     },
-    isDefault: true,
+    isDefault: false,
     options: {
       prompt: {
         name: "prompt",
