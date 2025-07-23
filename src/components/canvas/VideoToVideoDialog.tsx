@@ -39,7 +39,7 @@ export const VideoToVideoDialog: React.FC<VideoToVideoDialogProps> = ({
 }) => {
   const defaultModel = getDefaultVideoModel("video-to-video");
   const [selectedModelId, setSelectedModelId] = useState(
-    defaultModel?.id || "ltx-video-multiconditioning",
+    defaultModel?.id || "seedance-pro",
   );
   const [selectedModel, setSelectedModel] = useState<
     VideoModelConfig | undefined

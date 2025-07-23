@@ -34,7 +34,7 @@ export const StreamingVideo: React.FC<StreamingVideoProps> = ({
         imageUrl: generation.videoUrl || generation.imageUrl || "", // Use video URL if available, otherwise image URL
         prompt: generation.prompt,
         duration: generation.duration || 5,
-        modelId: generation.modelId || "ltx-video-multiconditioning", // Always use multiconditioning model
+        modelId: generation.modelId || "seedance-pro", // Always use multiconditioning model
         resolution: generation.resolution || "720p",
         cameraFixed: generation.cameraFixed,
         seed: generation.seed,

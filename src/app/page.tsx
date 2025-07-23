@@ -110,7 +110,7 @@ export default function OverlayPage() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isStorageLoaded, setIsStorageLoaded] = useState(false);
   const [visibleIndicators, setVisibleIndicators] = useState<Set<string>>(
-    new Set(),
+    new Set()
   );
   const simpsonsStyle = styleModels.find((m) => m.id === "simpsons");
   const { toast } = useToast();
@@ -198,7 +198,7 @@ export default function OverlayPage() {
 
   // Touch event states for mobile
   const [lastTouchDistance, setLastTouchDistance] = useState<number | null>(
-    null,
+    null
   );
   const [lastTouchCenter, setLastTouchCenter] = useState<{
     x: number;
@@ -214,7 +214,7 @@ export default function OverlayPage() {
   // Direct FAL upload function using proxy
 
   const { mutateAsync: removeBackground } = useMutation(
-    trpc.removeBackground.mutationOptions(),
+    trpc.removeBackground.mutationOptions()
   );
 
   // Function to handle the "Convert to Video" option in the context menu
@@ -228,7 +228,7 @@ export default function OverlayPage() {
 
   // Function to handle the image-to-video conversion
   const handleImageToVideoConversion = async (
-    settings: VideoGenerationSettings,
+    settings: VideoGenerationSettings
   ) => {
     if (!selectedImageForVideo) return;
 
@@ -242,7 +242,7 @@ export default function OverlayPage() {
       let imageUrl = image.src;
       if (imageUrl.startsWith("data:")) {
         const uploadResult = await falClient.storage.upload(
-          await (await fetch(imageUrl)).blob(),
+          await (await fetch(imageUrl)).blob()
         );
         imageUrl = uploadResult;
       }
@@ -320,7 +320,7 @@ export default function OverlayPage() {
 
   // Function to handle the video-to-video transformation
   const handleVideoToVideoTransformation = async (
-    settings: VideoGenerationSettings,
+    settings: VideoGenerationSettings
   ) => {
     if (!selectedVideoForVideo) return;
 
@@ -334,7 +334,7 @@ export default function OverlayPage() {
       let videoUrl = video.src;
       if (videoUrl.startsWith("data:") || videoUrl.startsWith("blob:")) {
         const uploadResult = await falClient.storage.upload(
-          await (await fetch(videoUrl)).blob(),
+          await (await fetch(videoUrl)).blob()
         );
         videoUrl = uploadResult;
       }
@@ -349,6 +349,8 @@ export default function OverlayPage() {
           ...settings, // Include all settings first
           imageUrl: videoUrl, // Using imageUrl field for video URL
           duration: video.duration || settings.duration || 5,
+          modelId: settings.modelId || "seedance-pro",
+          resolution: settings.resolution || "720p",
           isVideoToVideo: true,
           sourceVideoId: selectedVideoForVideo,
         });
@@ -360,7 +362,7 @@ export default function OverlayPage() {
 
       // Get video model name for toast display
       let modelName = "Video Model";
-      const modelId = settings.modelId || "ltx-video-multiconditioning";
+      const modelId = settings.modelId || "seedance-pro";
       const { getVideoModelById } = await import("@/lib/video-models");
       const model = getVideoModelById(modelId);
       if (model) {
@@ -423,7 +425,7 @@ export default function OverlayPage() {
       let videoUrl = video.src;
       if (videoUrl.startsWith("data:") || videoUrl.startsWith("blob:")) {
         const uploadResult = await falClient.storage.upload(
-          await (await fetch(videoUrl)).blob(),
+          await (await fetch(videoUrl)).blob()
         );
         videoUrl = uploadResult;
       }
@@ -437,8 +439,9 @@ export default function OverlayPage() {
         newMap.set(generationId, {
           ...settings, // Include all settings first
           imageUrl: videoUrl, // Using imageUrl field for video URL
-          prompt: settings.prompt || "Continue the video...",
           duration: video.duration || settings.duration || 5,
+          modelId: settings.modelId || "seedance-pro",
+          resolution: settings.resolution || "720p",
           isVideoToVideo: true,
           isVideoExtension: true,
           sourceVideoId: selectedVideoForExtend,
@@ -451,7 +454,7 @@ export default function OverlayPage() {
 
       // Get video model name for toast display
       let modelName = "Video Model";
-      const modelId = settings.modelId || "ltx-video-multiconditioning";
+      const modelId = settings.modelId || "seedance-pro";
       const { getVideoModelById } = await import("@/lib/video-models");
       const model = getVideoModelById(modelId);
       if (model) {
@@ -495,7 +498,7 @@ export default function OverlayPage() {
   const handleVideoGenerationComplete = async (
     videoId: string,
     videoUrl: string,
-    duration: number,
+    duration: number
   ) => {
     try {
       console.log("Video generation complete:", {
@@ -513,12 +516,12 @@ export default function OverlayPage() {
       // Dismiss progress toast if it exists
       if (generation?.toastId) {
         const toastElement = document.querySelector(
-          `[data-toast-id="${generation.toastId}"]`,
+          `[data-toast-id="${generation.toastId}"]`
         );
         if (toastElement) {
           // Trigger dismiss by clicking the close button
           const closeButton = toastElement.querySelector(
-            "[data-radix-toast-close]",
+            "[data-radix-toast-close]"
           );
           if (closeButton instanceof HTMLElement) {
             closeButton.click();
@@ -535,7 +538,7 @@ export default function OverlayPage() {
             image,
             videoUrl,
             duration,
-            false, // Don't replace the original image
+            false // Don't replace the original image
           );
 
           // Position the video to the right of the source image
@@ -718,18 +721,18 @@ export default function OverlayPage() {
   const handleVideoGenerationProgress = (
     videoId: string,
     progress: number,
-    status: string,
+    status: string
   ) => {
     // You could update a progress indicator here if needed
     console.log(`Video generation progress: ${progress}% - ${status}`);
   };
 
   const { mutateAsync: isolateObject } = useMutation(
-    trpc.isolateObject.mutationOptions(),
+    trpc.isolateObject.mutationOptions()
   );
 
   const { mutateAsync: generateTextToImage } = useMutation(
-    trpc.generateTextToImage.mutationOptions(),
+    trpc.generateTextToImage.mutationOptions()
   );
 
   // Save current state to storage
@@ -1078,7 +1081,7 @@ export default function OverlayPage() {
   const resizeImageIfNeeded = async (
     dataUrl: string,
     maxWidth: number = 2048,
-    maxHeight: number = 2048,
+    maxHeight: number = 2048
   ): Promise<string> => {
     return new Promise((resolve, reject) => {
       const img = new window.Image();
@@ -1129,7 +1132,7 @@ export default function OverlayPage() {
             reader.readAsDataURL(blob);
           },
           "image/jpeg",
-          0.9, // 90% quality
+          0.9 // 90% quality
         );
       };
       img.onerror = () => reject(new Error("Failed to load image"));
@@ -1143,7 +1146,7 @@ export default function OverlayPage() {
     cropX: number,
     cropY: number,
     cropWidth: number,
-    cropHeight: number,
+    cropHeight: number
   ): Promise<string> => {
     return new Promise((resolve, reject) => {
       const img = new window.Image();
@@ -1170,7 +1173,7 @@ export default function OverlayPage() {
           0,
           0,
           canvas.width,
-          canvas.height,
+          canvas.height
         );
 
         // Convert to data URL
@@ -1193,7 +1196,7 @@ export default function OverlayPage() {
   // Handle file upload
   const handleFileUpload = (
     files: FileList | null,
-    position?: { x: number; y: number },
+    position?: { x: number; y: number }
   ) => {
     if (!files) return;
 
@@ -1338,7 +1341,7 @@ export default function OverlayPage() {
       const touch2 = { x: touches[1].clientX, y: touches[1].clientY };
 
       const distance = Math.sqrt(
-        Math.pow(touch2.x - touch1.x, 2) + Math.pow(touch2.y - touch1.y, 2),
+        Math.pow(touch2.x - touch1.x, 2) + Math.pow(touch2.y - touch1.y, 2)
       );
 
       const center = {
@@ -1390,7 +1393,7 @@ export default function OverlayPage() {
       const touch2 = { x: touches[1].clientX, y: touches[1].clientY };
 
       const distance = Math.sqrt(
-        Math.pow(touch2.x - touch1.x, 2) + Math.pow(touch2.y - touch1.y, 2),
+        Math.pow(touch2.x - touch1.x, 2) + Math.pow(touch2.y - touch1.y, 2)
       );
 
       const center = {
@@ -1464,7 +1467,7 @@ export default function OverlayPage() {
   const handleSelect = (id: string, e: any) => {
     if (e.evt.shiftKey || e.evt.metaKey || e.evt.ctrlKey) {
       setSelectedIds((prev) =>
-        prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id],
+        prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
       );
     } else {
       setSelectedIds([id]);
@@ -1710,7 +1713,7 @@ export default function OverlayPage() {
     if (!selectedVideoForBackgroundRemoval) return;
 
     const video = videos.find(
-      (vid) => vid.id === selectedVideoForBackgroundRemoval,
+      (vid) => vid.id === selectedVideoForBackgroundRemoval
     );
     if (!video) return;
 
@@ -1726,7 +1729,7 @@ export default function OverlayPage() {
       let videoUrl = video.src;
       if (videoUrl.startsWith("data:") || videoUrl.startsWith("blob:")) {
         const uploadResult = await falClient.storage.upload(
-          await (await fetch(videoUrl)).blob(),
+          await (await fetch(videoUrl)).blob()
         );
         videoUrl = uploadResult;
       }
@@ -1803,7 +1806,7 @@ export default function OverlayPage() {
         const newMap = new Map(prev);
         const generationId = Array.from(prev.keys()).find(
           (key) =>
-            prev.get(key)?.sourceVideoId === selectedVideoForBackgroundRemoval,
+            prev.get(key)?.sourceVideoId === selectedVideoForBackgroundRemoval
         );
         if (generationId) {
           newMap.delete(generationId);
@@ -1828,7 +1831,7 @@ export default function OverlayPage() {
 
       // Get remaining images
       const remainingImages = prev.filter(
-        (img) => !selectedIds.includes(img.id),
+        (img) => !selectedIds.includes(img.id)
       );
 
       // Place selected images at the end (top layer)
@@ -1848,7 +1851,7 @@ export default function OverlayPage() {
 
       // Get remaining images
       const remainingImages = prev.filter(
-        (img) => !selectedIds.includes(img.id),
+        (img) => !selectedIds.includes(img.id)
       );
 
       // Place selected images at the beginning (bottom layer)
@@ -1953,7 +1956,7 @@ export default function OverlayPage() {
         0,
         0,
         canvas.width,
-        canvas.height,
+        canvas.height
       );
 
       // Convert to blob and upload
@@ -1972,7 +1975,7 @@ export default function OverlayPage() {
         dataUrl,
         falClient,
         toast,
-        setIsApiKeyDialogOpen,
+        setIsApiKeyDialogOpen
       );
 
       // Isolate object using EVF-SAM2
@@ -2017,7 +2020,7 @@ export default function OverlayPage() {
             "New image loaded successfully:",
             testImg.width,
             "x",
-            testImg.height,
+            testImg.height
           );
 
           // Create a test canvas to verify the image has transparency
@@ -2071,7 +2074,7 @@ export default function OverlayPage() {
             // Replace old image with new one at same index
             const newImages = [...prev];
             const index = newImages.findIndex(
-              (img) => img.id === isolateTarget,
+              (img) => img.id === isolateTarget
             );
             if (index !== -1) {
               newImages[index] = newImage;
@@ -2204,7 +2207,7 @@ export default function OverlayPage() {
     canvas.height = Math.round(combinedHeight * optimalScale);
 
     console.log(
-      `Creating combined image at ${canvas.width}x${canvas.height} (scale: ${optimalScale.toFixed(2)}x)`,
+      `Creating combined image at ${canvas.width}x${canvas.height} (scale: ${optimalScale.toFixed(2)}x)`
     );
 
     // Draw each image in order using the pre-loaded elements
@@ -2226,7 +2229,7 @@ export default function OverlayPage() {
           -scaledWidth / 2,
           -scaledHeight / 2,
           scaledWidth,
-          scaledHeight,
+          scaledHeight
         );
       } else {
         // Handle cropping if exists
@@ -2245,7 +2248,7 @@ export default function OverlayPage() {
             relX,
             relY,
             scaledWidth,
-            scaledHeight,
+            scaledHeight
           );
         } else {
           ctx.drawImage(
@@ -2257,7 +2260,7 @@ export default function OverlayPage() {
             relX,
             relY,
             scaledWidth,
-            scaledHeight,
+            scaledHeight
           );
         }
       }
@@ -2462,14 +2465,14 @@ export default function OverlayPage() {
           apiKey={customApiKey}
           onStreamingUpdate={(id, url) => {
             setImages((prev) =>
-              prev.map((img) => (img.id === id ? { ...img, src: url } : img)),
+              prev.map((img) => (img.id === id ? { ...img, src: url } : img))
             );
           }}
           onComplete={(id, finalUrl) => {
             setImages((prev) =>
               prev.map((img) =>
-                img.id === id ? { ...img, src: finalUrl } : img,
-              ),
+                img.id === id ? { ...img, src: finalUrl } : img
+              )
             );
             setActiveGenerations((prev) => {
               const newMap = new Map(prev);
@@ -2574,6 +2577,17 @@ export default function OverlayPage() {
                     onTouchMove={handleTouchMove}
                     onTouchEnd={handleTouchEnd}
                     onContextMenu={(e) => {
+                      // Check if this is a forwarded event from a video overlay
+                      const videoId =
+                        (e.evt as any)?.videoId || (e as any)?.videoId;
+                      if (videoId) {
+                        // This is a right-click on a video
+                        if (!selectedIds.includes(videoId)) {
+                          setSelectedIds([videoId]);
+                        }
+                        return;
+                      }
+
                       // Get clicked position
                       const stage = e.target.getStage();
                       if (!stage) return;
@@ -2586,6 +2600,23 @@ export default function OverlayPage() {
                         x: (point.x - viewport.x) / viewport.scale,
                         y: (point.y - viewport.y) / viewport.scale,
                       };
+
+                      // Check if we clicked on a video first (check in reverse order for top-most)
+                      const clickedVideo = [...videos].reverse().find((vid) => {
+                        return (
+                          canvasPoint.x >= vid.x &&
+                          canvasPoint.x <= vid.x + vid.width &&
+                          canvasPoint.y >= vid.y &&
+                          canvasPoint.y <= vid.y + vid.height
+                        );
+                      });
+
+                      if (clickedVideo) {
+                        if (!selectedIds.includes(clickedVideo.id)) {
+                          setSelectedIds([clickedVideo.id]);
+                        }
+                        return;
+                      }
 
                       // Check if we clicked on an image (check in reverse order for top-most image)
                       const clickedImage = [...images].reverse().find((img) => {
@@ -2651,8 +2682,8 @@ export default function OverlayPage() {
                                 prev.map((img) =>
                                   img.id === image.id
                                     ? { ...img, ...newAttrs }
-                                    : img,
-                                ),
+                                    : img
+                                )
                               );
                             }}
                             onDoubleClick={() => {
@@ -2730,8 +2761,8 @@ export default function OverlayPage() {
                                 prev.map((vid) =>
                                   vid.id === video.id
                                     ? { ...vid, ...newAttrs }
-                                    : vid,
-                                ),
+                                    : vid
+                                )
                               );
                             }}
                             onDragStart={() => {
@@ -2746,7 +2777,7 @@ export default function OverlayPage() {
                               setIsDraggingImage(true);
                               // Hide video controls during drag
                               setHiddenVideoControlsIds(
-                                (prev) => new Set([...prev, video.id]),
+                                (prev) => new Set([...prev, video.id])
                               );
                               // Save positions of all selected items
                               const positions = new Map<
@@ -2780,7 +2811,7 @@ export default function OverlayPage() {
                             dragStartPositions={dragStartPositions}
                             onResizeStart={() =>
                               setHiddenVideoControlsIds(
-                                (prev) => new Set([...prev, video.id]),
+                                (prev) => new Set([...prev, video.id])
                               )
                             }
                             onResizeEnd={() =>
@@ -2797,7 +2828,7 @@ export default function OverlayPage() {
                       {croppingImageId &&
                         (() => {
                           const croppingImage = images.find(
-                            (img) => img.id === croppingImageId,
+                            (img) => img.id === croppingImageId
                           );
                           if (!croppingImage) return null;
 
@@ -2810,8 +2841,8 @@ export default function OverlayPage() {
                                   prev.map((img) =>
                                     img.id === croppingImageId
                                       ? { ...img, ...crop }
-                                      : img,
-                                  ),
+                                      : img
+                                  )
                                 );
                               }}
                               onCropEnd={async () => {
@@ -2832,7 +2863,7 @@ export default function OverlayPage() {
                                         cropX,
                                         cropY,
                                         cropWidth,
-                                        cropHeight,
+                                        cropHeight
                                       );
 
                                     setImages((prev) =>
@@ -2854,13 +2885,13 @@ export default function OverlayPage() {
                                               cropWidth: undefined,
                                               cropHeight: undefined,
                                             }
-                                          : img,
-                                      ),
+                                          : img
+                                      )
                                     );
                                   } catch (error) {
                                     console.error(
                                       "Failed to create cropped image:",
-                                      error,
+                                      error
                                     );
                                   }
                                 }
@@ -3001,7 +3032,7 @@ export default function OverlayPage() {
                     className={cn(
                       "h-8 px-3 gap-2",
                       customApiKey &&
-                        "border-green-500/50 bg-green-500/10 hover:border-green-500/70 hover:bg-green-500/20",
+                        "border-green-500/50 bg-green-500/10 hover:border-green-500/70 hover:bg-green-500/20"
                     )}
                     title={
                       customApiKey
@@ -3012,13 +3043,13 @@ export default function OverlayPage() {
                     <Key
                       className={cn(
                         "h-4 w-4",
-                        customApiKey && "text-green-500",
+                        customApiKey && "text-green-500"
                       )}
                     />
                     <span
                       className={cn(
                         "text-sm",
-                        customApiKey && "text-green-500",
+                        customApiKey && "text-green-500"
                       )}
                     >
                       {customApiKey ? "Custom Key" : "API Key"}
@@ -3047,7 +3078,7 @@ export default function OverlayPage() {
                       input.onchange = (e) => {
                         try {
                           handleFileUpload(
-                            (e.target as HTMLInputElement).files,
+                            (e.target as HTMLInputElement).files
                           );
                         } catch (error) {
                           console.error("File upload error:", error);
@@ -3081,7 +3112,7 @@ export default function OverlayPage() {
                         } catch (error) {
                           console.error(
                             "Failed to trigger file dialog:",
-                            error,
+                            error
                           );
                           toast({
                             title: "Upload unavailable",
@@ -3231,7 +3262,7 @@ export default function OverlayPage() {
                         }
                         const selectedModel =
                           styleModels.find(
-                            (m) => m.id === generationSettings.styleId,
+                            (m) => m.id === generationSettings.styleId
                           ) || styleModels.find((m) => m.id === "simpsons");
                         return (
                           <>
@@ -3288,7 +3319,7 @@ export default function OverlayPage() {
                         className: "gap-2",
                         size: "sm",
                       }),
-                      "hidden xl:flex",
+                      "hidden xl:flex"
                     )}
                     href={"https://github.com/fal-ai-community/infinite-kanvas"}
                     target="_blank"
@@ -3334,7 +3365,7 @@ export default function OverlayPage() {
           {/* Dimension display for selected images */}
           <DimensionDisplay
             selectedImages={images.filter((img) =>
-              selectedIds.includes(img.id),
+              selectedIds.includes(img.id)
             )}
             viewport={viewport}
           />
@@ -3375,7 +3406,7 @@ export default function OverlayPage() {
                     "group relative flex flex-col items-center gap-2 p-3 rounded border",
                     generationSettings.styleId === "custom"
                       ? "border-primary bg-primary/10"
-                      : "border-border hover:border-primary/50",
+                      : "border-border hover:border-primary/50"
                   )}
                 >
                   <div className="w-full aspect-square rounded-md bg-muted flex items-center justify-center">
@@ -3401,7 +3432,7 @@ export default function OverlayPage() {
                       "group relative flex flex-col items-center gap-2 p-3 rounded border",
                       generationSettings.styleId === model.id
                         ? "border-primary bg-primary/10"
-                        : "border-border hover:border-primary/50",
+                        : "border-border hover:border-primary/50"
                     )}
                   >
                     <div className="relative w-full aspect-square rounded-md overflow-hidden">

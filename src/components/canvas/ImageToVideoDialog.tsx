@@ -39,7 +39,7 @@ export const ImageToVideoDialog: React.FC<ImageToVideoDialogProps> = ({
 }) => {
   const defaultModel = getDefaultVideoModel("image-to-video");
   const [selectedModelId, setSelectedModelId] = useState(
-    defaultModel?.id || "ltx-video-multiconditioning",
+    defaultModel?.id || "seedance-pro",
   );
   const [selectedModel, setSelectedModel] = useState<
     VideoModelConfig | undefined
@@ -181,9 +181,6 @@ export const ImageToVideoDialog: React.FC<ImageToVideoDialogProps> = ({
                 <div className="flex items-center gap-2">
                   <span>Run</span>
                   <span className="flex flex-row space-x-0.5">
-                    <kbd className="flex items-center justify-center tracking-tighter rounded border px-1 font-mono bg-white/10 border-white/10 h-6 min-w-6 text-xs">
-                      ⌘
-                    </kbd>
                     <kbd className="flex items-center justify-center tracking-tighter rounded border px-1 font-mono bg-white/10 border-white/10 h-6 min-w-6 text-xs">
                       ↵
                     </kbd>
