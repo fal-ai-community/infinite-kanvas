@@ -9,7 +9,11 @@ const fal = createFalClient({
 });
 
 // Helper function to check rate limits or use custom API key
-async function getFalClient(apiKey: string | undefined, ctx: any) {
+async function getFalClient(
+  apiKey: string | undefined,
+  ctx: any,
+  isVideo: boolean = false,
+) {
   if (apiKey) {
     return createFalClient({
       credentials: () => apiKey,
@@ -20,22 +24,34 @@ async function getFalClient(apiKey: string | undefined, ctx: any) {
   const { shouldLimitRequest } = await import("@/lib/ratelimit");
   const { createRateLimiter } = await import("@/lib/ratelimit");
 
-  const limiter = {
-    perMinute: createRateLimiter(50, "60 s"),
-    perHour: createRateLimiter(250, "60 m"),
-    perDay: createRateLimiter(500, "24 h"),
-  };
+  // Different rate limits for video vs regular operations
+  const limiter = isVideo
+    ? {
+        perMinute: createRateLimiter(1, "60 s"),
+        perHour: createRateLimiter(1, "60 m"),
+        perDay: createRateLimiter(1, "24 h"),
+      }
+    : {
+        perMinute: createRateLimiter(50, "60 s"),
+        perHour: createRateLimiter(250, "60 m"),
+        perDay: createRateLimiter(500, "24 h"),
+      };
 
   const ip =
     ctx.req?.headers.get?.("x-forwarded-for") ||
     ctx.req?.headers.get?.("x-real-ip") ||
     "unknown";
 
-  const limiterResult = await shouldLimitRequest(limiter, ip);
+  const limiterResult = await shouldLimitRequest(
+    limiter,
+    ip,
+    isVideo ? "video" : undefined,
+  );
   if (limiterResult.shouldLimitRequest) {
-    throw new Error(
-      `Rate limit exceeded per ${limiterResult.period}. Add your FAL API key to bypass rate limits.`,
-    );
+    const errorMessage = isVideo
+      ? `Video generation rate limit exceeded: 1 video per ${limiterResult.period}. Add your FAL API key to bypass rate limits.`
+      : `Rate limit exceeded per ${limiterResult.period}. Add your FAL API key to bypass rate limits.`;
+    throw new Error(errorMessage);
   }
 
   return fal;
@@ -50,7 +66,568 @@ async function downloadImage(url: string): Promise<Buffer> {
   return Buffer.from(await response.arrayBuffer());
 }
 
+import { getVideoModelById, VIDEO_MODELS } from "@/lib/video-models";
+
 export const appRouter = router({
+  transformVideo: publicProcedure
+    .input(
+      z.object({
+        videoUrl: z.string().url(),
+        prompt: z.string().optional(),
+        styleId: z.string().optional(),
+        apiKey: z.string().optional(),
+      }),
+    )
+    .subscription(async function* ({ input, signal, ctx }) {
+      try {
+        const falClient = await getFalClient(input.apiKey, ctx, true);
+
+        // Create a unique ID for this transformation
+        const transformationId = `vidtrans_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+
+        // Yield initial progress
+        yield tracked(`${transformationId}_start`, {
+          type: "progress",
+          progress: 0,
+          status: "Starting video transformation...",
+        });
+
+        // Start streaming from fal.ai
+        const stream = await falClient.stream(
+          VIDEO_MODELS["stable-video-diffusion"].endpoint,
+          {
+            input: {
+              video_url: input.videoUrl,
+              prompt: input.prompt || "",
+              style: input.styleId || "",
+              num_inference_steps: 25,
+              guidance_scale: 7.5,
+            },
+          },
+        );
+
+        let eventIndex = 0;
+
+        // Stream events as they come
+        for await (const event of stream) {
+          if (signal?.aborted) {
+            break;
+          }
+
+          const eventId = `${transformationId}_${eventIndex++}`;
+
+          // Calculate progress percentage if available
+          const progress =
+            event.progress !== undefined
+              ? Math.floor(event.progress * 100)
+              : eventIndex * 5; // Fallback progress estimation
+
+          yield tracked(eventId, {
+            type: "progress",
+            progress,
+            status: event.status || "Transforming video...",
+            data: event,
+          });
+        }
+
+        // Get the final result
+        const result = await stream.done();
+
+        // Handle different response formats
+        const videoUrl =
+          (result as any).data?.video?.url ||
+          (result as any).data?.url ||
+          (result as any).video_url;
+        if (!videoUrl) {
+          yield tracked(`${transformationId}_error`, {
+            type: "error",
+            error: "No video generated",
+          });
+          return;
+        }
+
+        // Send the final video
+        yield tracked(`${transformationId}_complete`, {
+          type: "complete",
+          videoUrl: videoUrl,
+          duration: (result as any).duration || 3, // Default to 3 seconds if not provided
+        });
+      } catch (error) {
+        console.error("Error in video transformation:", error);
+        yield tracked(`error_${Date.now()}`, {
+          type: "error",
+          error:
+            error instanceof Error
+              ? error.message
+              : "Failed to transform video",
+        });
+      }
+    }),
+  generateImageToVideo: publicProcedure
+    .input(
+      z
+        .object({
+          imageUrl: z.string().url(),
+          prompt: z.string().optional(),
+          duration: z.number().optional().default(5),
+          modelId: z.string().optional(),
+          resolution: z
+            .enum(["480p", "720p", "1080p"])
+            .optional()
+            .default("720p"),
+          cameraFixed: z.boolean().optional().default(false),
+          seed: z.number().optional().default(-1),
+          apiKey: z.string().optional(),
+        })
+        .passthrough(), // Allow additional fields for different models
+    )
+    .subscription(async function* ({ input, signal, ctx }) {
+      try {
+        const falClient = await getFalClient(input.apiKey, ctx, true);
+
+        // Create a unique ID for this generation
+        const generationId = `img2vid_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+
+        // Yield initial progress
+        yield tracked(`${generationId}_start`, {
+          type: "progress",
+          progress: 0,
+          status: "Starting image-to-video conversion...",
+        });
+
+        // Use subscribe instead of stream for SeeDANCE model
+        // First yield a progress update to show we're starting
+        yield tracked(`${generationId}_starting`, {
+          type: "progress",
+          progress: 10,
+          status: "Starting video generation...",
+        });
+
+        // Call the SeeDANCE API using subscribe method
+        // Convert duration to one of the allowed values: "5" or "10"
+        const duration = input.duration <= 5 ? "5" : "10";
+
+        // Ensure prompt is descriptive enough
+        const prompt =
+          input.prompt || "A smooth animation of the image with natural motion";
+
+        // Determine model from modelId or use default
+        const modelId = input.modelId || "ltx-video"; // Default to ltx-video
+        const model = getVideoModelById(modelId);
+        if (!model) {
+          throw new Error(`Unknown model ID: ${modelId}`);
+        }
+        const modelEndpoint = model.endpoint;
+
+        // Build input parameters based on model configuration
+        let inputParams: any = {};
+
+        if (input.modelId) {
+          const model = getVideoModelById(input.modelId);
+          if (model) {
+            // Map our generic field names to model-specific field names
+            if (model.id === "ltx-video-extend") {
+              // Use the dedicated extend endpoint format
+              let startFrame = (input as any).startFrameNum ?? 32;
+
+              // Ensure startFrame is a multiple of 8
+              if (startFrame % 8 !== 0) {
+                // Round to nearest multiple of 8
+                startFrame = Math.round(startFrame / 8) * 8;
+                console.log(
+                  `Adjusted start frame from ${(input as any).startFrameNum} to ${startFrame} (must be multiple of 8)`,
+                );
+              }
+
+              inputParams = {
+                video: {
+                  video_url: input.imageUrl, // imageUrl contains the video URL for extension
+                  // Use the validated startFrame (already defaulted and rounded)
+                  start_frame_num: startFrame,
+                  reverse_video:
+                    (input as any).reverseVideoConditioning ?? false,
+                  limit_num_frames: (input as any).limitNumFrames ?? false,
+                  resample_fps: (input as any).resampleFps ?? false,
+                  strength: (input as any).strength ?? 1,
+                  target_fps: (input as any).targetFps ?? 30,
+                  max_num_frames: (input as any).maxNumFrames ?? 121,
+                  conditioning_type: (input as any).conditioningType ?? "rgb",
+                  preprocess: (input as any).preprocess ?? false,
+                },
+                prompt: input.prompt || model.defaults.prompt,
+                negative_prompt:
+                  (input as any).negativePrompt ||
+                  model.defaults.negativePrompt,
+                resolution: input.resolution || model.defaults.resolution,
+                aspect_ratio:
+                  (input as any).aspectRatio || model.defaults.aspectRatio,
+                num_frames:
+                  (input as any).numFrames || model.defaults.numFrames,
+                first_pass_num_inference_steps:
+                  (input as any).firstPassNumInferenceSteps || 30,
+                first_pass_skip_final_steps:
+                  (input as any).firstPassSkipFinalSteps || 3,
+                second_pass_num_inference_steps:
+                  (input as any).secondPassNumInferenceSteps || 30,
+                second_pass_skip_initial_steps:
+                  (input as any).secondPassSkipInitialSteps || 17,
+                frame_rate:
+                  (input as any).frameRate || model.defaults.frameRate,
+                expand_prompt:
+                  (input as any).expandPrompt ?? model.defaults.expandPrompt,
+                reverse_video:
+                  (input as any).reverseVideo ?? model.defaults.reverseVideo,
+                enable_safety_checker:
+                  (input as any).enableSafetyChecker ??
+                  model.defaults.enableSafetyChecker,
+                constant_rate_factor:
+                  (input as any).constantRateFactor ||
+                  model.defaults.constantRateFactor,
+                seed:
+                  input.seed !== undefined && input.seed !== -1
+                    ? input.seed
+                    : undefined,
+              };
+            } else if (model.id === "ltx-video-multiconditioning") {
+              // Handle multiconditioning model with support for video-to-video
+              const isVideoToVideo = (input as any).isVideoToVideo;
+              const isVideoExtension = (input as any).isVideoExtension;
+
+              inputParams = {
+                prompt: input.prompt || "",
+                negative_prompt:
+                  (input as any).negativePrompt ||
+                  model.defaults.negativePrompt,
+                resolution: input.resolution || model.defaults.resolution,
+                aspect_ratio:
+                  (input as any).aspectRatio || model.defaults.aspectRatio,
+                num_frames:
+                  (input as any).numFrames || model.defaults.numFrames,
+                frame_rate:
+                  (input as any).frameRate || model.defaults.frameRate,
+                first_pass_num_inference_steps:
+                  (input as any).firstPassNumInferenceSteps ||
+                  model.defaults.firstPassNumInferenceSteps,
+                first_pass_skip_final_steps:
+                  (input as any).firstPassSkipFinalSteps ||
+                  model.defaults.firstPassSkipFinalSteps,
+                second_pass_num_inference_steps:
+                  (input as any).secondPassNumInferenceSteps ||
+                  model.defaults.secondPassNumInferenceSteps,
+                second_pass_skip_initial_steps:
+                  (input as any).secondPassSkipInitialSteps ||
+                  model.defaults.secondPassSkipInitialSteps,
+                expand_prompt:
+                  (input as any).expandPrompt ?? model.defaults.expandPrompt,
+                reverse_video:
+                  (input as any).reverseVideo ?? model.defaults.reverseVideo,
+                enable_safety_checker:
+                  (input as any).enableSafetyChecker ??
+                  model.defaults.enableSafetyChecker,
+                constant_rate_factor:
+                  (input as any).constantRateFactor ||
+                  model.defaults.constantRateFactor,
+                seed:
+                  input.seed !== undefined && input.seed !== -1
+                    ? input.seed
+                    : undefined,
+              };
+
+              // Add image or video conditioning based on the type
+              if (isVideoToVideo) {
+                if (isVideoExtension) {
+                  // For video extension, use conditioning that focuses on the end of the video
+                  inputParams.videos = [
+                    {
+                      video_url: input.imageUrl, // imageUrl contains the video URL
+                      conditioning_type: "rgb",
+                      preprocess: true,
+                      start_frame_num: 24, // Use frames from near the end
+                      strength: 1,
+                      limit_num_frames: true,
+                      max_num_frames: 121,
+                      resample_fps: true,
+                      target_fps: 30,
+                      reverse_video: false,
+                    },
+                  ];
+                  // Modify prompt to indicate continuation
+                  if (
+                    inputParams.prompt &&
+                    !inputParams.prompt.toLowerCase().includes("continue") &&
+                    !inputParams.prompt.toLowerCase().includes("extend")
+                  ) {
+                    inputParams.prompt =
+                      "Continue this video naturally. " + inputParams.prompt;
+                  }
+                } else {
+                  // Regular video-to-video transformation
+                  inputParams.videos = [
+                    {
+                      video_url: input.imageUrl, // imageUrl contains the video URL
+                      start_frame_num: 0,
+                      end_frame_num: -1, // Use all frames
+                    },
+                  ];
+                }
+              } else {
+                inputParams.images = [
+                  {
+                    image_url: input.imageUrl,
+                    strength: 1.0,
+                    start_frame_num: 0,
+                  },
+                ];
+              }
+            } else if (model.id === "ltx-video") {
+              inputParams = {
+                image_url: input.imageUrl,
+                prompt: input.prompt || "",
+                negative_prompt:
+                  (input as any).negativePrompt ||
+                  model.defaults.negativePrompt,
+                resolution: input.resolution || model.defaults.resolution,
+                aspect_ratio:
+                  (input as any).aspectRatio || model.defaults.aspectRatio,
+                num_frames:
+                  (input as any).numFrames || model.defaults.numFrames,
+                frame_rate:
+                  (input as any).frameRate || model.defaults.frameRate,
+                expand_prompt:
+                  (input as any).expandPrompt ?? model.defaults.expandPrompt,
+                reverse_video:
+                  (input as any).reverseVideo ?? model.defaults.reverseVideo,
+                constant_rate_factor:
+                  (input as any).constantRateFactor ||
+                  model.defaults.constantRateFactor,
+                seed:
+                  input.seed !== undefined && input.seed !== -1
+                    ? input.seed
+                    : undefined,
+                enable_safety_checker: true,
+              };
+            } else if (modelId === "bria-video-background-removal") {
+              // Bria video background removal
+              inputParams = {
+                video_url: input.imageUrl, // imageUrl contains the video URL
+                background_color:
+                  (input as any).backgroundColor ||
+                  model.defaults.backgroundColor ||
+                  "Black",
+              };
+            } else {
+              // SeeDANCE models and others
+              inputParams = {
+                image_url: input.imageUrl,
+                prompt: input.prompt || prompt,
+                duration: duration || input.duration,
+                resolution: input.resolution,
+                camera_fixed:
+                  input.cameraFixed !== undefined ? input.cameraFixed : false,
+                seed: input.seed !== undefined ? input.seed : -1,
+              };
+            }
+          }
+        } else {
+          // Backward compatibility
+          inputParams = {
+            image_url: input.imageUrl,
+            prompt: prompt,
+            duration: duration,
+            resolution: input.resolution,
+            camera_fixed:
+              input.cameraFixed !== undefined ? input.cameraFixed : false,
+            seed: input.seed !== undefined ? input.seed : -1,
+          };
+        }
+
+        console.log(
+          `Calling ${modelEndpoint} with parameters:`,
+          JSON.stringify(inputParams, null, 2),
+        );
+
+        let result;
+        try {
+          result = await falClient.subscribe(modelEndpoint, {
+            input: inputParams,
+          });
+        } catch (apiError: any) {
+          console.error("FAL API Error Details:", {
+            message: apiError.message,
+            status: apiError.status,
+            statusText: apiError.statusText,
+            body: apiError.body,
+            response: apiError.response,
+            data: apiError.data,
+            // Log the exact parameters that were sent
+            sentParameters: inputParams,
+            endpoint: modelEndpoint,
+          });
+
+          // Log specific validation errors if available
+          if (apiError.body?.detail) {
+            console.error("Validation error details:", apiError.body.detail);
+          }
+
+          // Re-throw with more context
+          if (
+            apiError.status === 422 ||
+            apiError.message?.includes("Unprocessable Entity")
+          ) {
+            let errorDetail =
+              apiError.body?.detail ||
+              apiError.message ||
+              "Please check the video format and parameters";
+            // If errorDetail is an object, stringify it
+            if (typeof errorDetail === "object") {
+              errorDetail = JSON.stringify(errorDetail);
+            }
+            throw new Error(
+              `Invalid parameters for ${modelEndpoint}: ${errorDetail}`,
+            );
+          }
+          throw apiError;
+        }
+
+        // Yield progress update
+        yield tracked(`${generationId}_progress`, {
+          type: "progress",
+          progress: 100,
+          status: "Video generation complete",
+        });
+
+        // Handle different response formats from different models
+        const videoUrl =
+          result.data?.video?.url ||
+          result.data?.url ||
+          (result as any).video?.url ||
+          (result as any).url;
+        if (!videoUrl) {
+          console.error("No video URL found in response:", result);
+          yield tracked(`${generationId}_error`, {
+            type: "error",
+            error: "No video generated",
+          });
+          return;
+        }
+
+        // Extract duration from response or use input value
+        const videoDuration = result.data?.duration || input.duration || 5;
+
+        // Send the final video
+        yield tracked(`${generationId}_complete`, {
+          type: "complete",
+          videoUrl: videoUrl,
+          duration: videoDuration,
+        });
+      } catch (error) {
+        console.error("Error in image-to-video conversion:", error);
+        yield tracked(`error_${Date.now()}`, {
+          type: "error",
+          error:
+            error instanceof Error
+              ? error.message
+              : "Failed to convert image to video",
+        });
+      }
+    }),
+
+  generateTextToVideo: publicProcedure
+    .input(
+      z.object({
+        prompt: z.string(),
+        duration: z.number().optional().default(3),
+        styleId: z.string().optional(),
+        apiKey: z.string().optional(),
+      }),
+    )
+    .subscription(async function* ({ input, signal, ctx }) {
+      try {
+        const falClient = await getFalClient(input.apiKey, ctx, true);
+
+        // Create a unique ID for this generation
+        const generationId = `vid_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+
+        // Yield initial progress
+        yield tracked(`${generationId}_start`, {
+          type: "progress",
+          progress: 0,
+          status: "Starting video generation...",
+        });
+
+        // Start streaming from fal.ai
+        const stream = await falClient.stream(
+          VIDEO_MODELS["stable-video-diffusion"].endpoint,
+          {
+            input: {
+              prompt: input.prompt,
+              num_frames: Math.floor(input.duration * 24), // Convert seconds to frames at 24fps
+              num_inference_steps: 25,
+              guidance_scale: 7.5,
+              width: 576,
+              height: 320,
+              fps: 24,
+              motion_bucket_id: 127, // Higher values = more motion
+              seed: Math.floor(Math.random() * 2147483647),
+            },
+          },
+        );
+
+        let eventIndex = 0;
+
+        // Stream events as they come
+        for await (const event of stream) {
+          if (signal?.aborted) {
+            break;
+          }
+
+          const eventId = `${generationId}_${eventIndex++}`;
+
+          // Calculate progress percentage if available
+          const progress =
+            event.progress !== undefined
+              ? Math.floor(event.progress * 100)
+              : eventIndex * 5; // Fallback progress estimation
+
+          yield tracked(eventId, {
+            type: "progress",
+            progress,
+            status: event.status || "Generating video...",
+            data: event,
+          });
+        }
+
+        // Get the final result
+        const result = await stream.done();
+
+        // Handle different response formats
+        const videoUrl =
+          (result as any).data?.video?.url ||
+          (result as any).data?.url ||
+          (result as any).video_url;
+        if (!videoUrl) {
+          yield tracked(`${generationId}_error`, {
+            type: "error",
+            error: "No video generated",
+          });
+          return;
+        }
+
+        // Send the final video
+        yield tracked(`${generationId}_complete`, {
+          type: "complete",
+          videoUrl: videoUrl,
+          duration: input.duration,
+        });
+      } catch (error) {
+        console.error("Error in text-to-video generation:", error);
+        yield tracked(`error_${Date.now()}`, {
+          type: "error",
+          error:
+            error instanceof Error ? error.message : "Failed to generate video",
+        });
+      }
+    }),
   removeBackground: publicProcedure
     .input(
       z.object({

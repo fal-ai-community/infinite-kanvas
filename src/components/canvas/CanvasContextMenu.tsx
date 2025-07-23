@@ -24,14 +24,21 @@ import {
   ChevronDown,
   MoveUp,
   MoveDown,
+  Video,
+  FilePlus,
 } from "lucide-react";
 import { SpinnerIcon } from "@/components/icons";
 import { checkOS } from "@/utils/os-utils";
-import type { PlacedImage, GenerationSettings } from "@/types/canvas";
+import type {
+  PlacedImage,
+  PlacedVideo,
+  GenerationSettings,
+} from "@/types/canvas";
 
 interface CanvasContextMenuProps {
   selectedIds: string[];
   images: PlacedImage[];
+  videos?: PlacedVideo[];
   isGenerating: boolean;
   generationSettings: GenerationSettings;
   isolateInputValue: string;
@@ -42,6 +49,10 @@ interface CanvasContextMenuProps {
   handleCombineImages: () => void;
   handleDelete: () => void;
   handleIsolate: () => void;
+  handleConvertToVideo?: (imageId: string) => void;
+  handleVideoToVideo?: (videoId: string) => void;
+  handleExtendVideo?: (videoId: string) => void;
+  handleRemoveVideoBackground?: (videoId: string) => void;
   setCroppingImageId: (id: string | null) => void;
   setIsolateInputValue: (value: string) => void;
   setIsolateTarget: (id: string | null) => void;
@@ -54,6 +65,7 @@ interface CanvasContextMenuProps {
 export const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
   selectedIds,
   images,
+  videos = [], // Provide a default empty array
   isGenerating,
   generationSettings,
   isolateInputValue,
@@ -64,6 +76,10 @@ export const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
   handleCombineImages,
   handleDelete,
   handleIsolate,
+  handleConvertToVideo,
+  handleVideoToVideo,
+  handleExtendVideo,
+  handleRemoveVideoBackground,
   setCroppingImageId,
   setIsolateInputValue,
   setIsolateTarget,
@@ -109,7 +125,10 @@ export const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
             setCroppingImageId(selectedIds[0]);
           }
         }}
-        disabled={selectedIds.length !== 1}
+        disabled={
+          selectedIds.length !== 1 ||
+          videos?.some((v) => selectedIds.includes(v.id))
+        }
         className="flex items-center gap-2"
       >
         <Crop className="h-4 w-4" />
@@ -117,20 +136,82 @@ export const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
       </ContextMenuItem>
       <ContextMenuItem
         onClick={handleRemoveBackground}
-        disabled={selectedIds.length === 0}
+        disabled={
+          selectedIds.length === 0 ||
+          videos?.some((v) => selectedIds.includes(v.id))
+        }
         className="flex items-center gap-2"
       >
         <Scissors className="h-4 w-4" />
         Remove Background
       </ContextMenuItem>
+      {selectedIds.length === 1 &&
+        handleConvertToVideo &&
+        images.some((img) => img.id === selectedIds[0]) && (
+          <ContextMenuItem
+            onClick={() => {
+              handleConvertToVideo(selectedIds[0]);
+            }}
+            className="flex items-center gap-2"
+          >
+            <Video className="h-4 w-4" />
+            Image to Video
+          </ContextMenuItem>
+        )}
+      {/* Temporarily disabled Video to Video option
+      {selectedIds.length === 1 &&
+        handleVideoToVideo &&
+        videos?.some((v) => v.id === selectedIds[0]) && (
+          <ContextMenuItem
+            onClick={() => {
+              handleVideoToVideo(selectedIds[0]);
+            }}
+            className="flex items-center gap-2"
+          >
+            <Video className="h-4 w-4" />
+            Video to Video
+          </ContextMenuItem>
+        )} */}
+      {selectedIds.length === 1 &&
+        handleExtendVideo &&
+        videos?.some((v) => v.id === selectedIds[0]) && (
+          <ContextMenuItem
+            onClick={() => {
+              handleExtendVideo(selectedIds[0]);
+            }}
+            className="flex items-center gap-2"
+          >
+            <FilePlus className="h-4 w-4" />
+            Extend Video
+          </ContextMenuItem>
+        )}
+      {selectedIds.length === 1 &&
+        handleRemoveVideoBackground &&
+        videos?.some((v) => v.id === selectedIds[0]) && (
+          <ContextMenuItem
+            onClick={() => {
+              handleRemoveVideoBackground(selectedIds[0]);
+            }}
+            className="flex items-center gap-2"
+          >
+            <Scissors className="h-4 w-4" />
+            Remove Video Background
+          </ContextMenuItem>
+        )}
       <ContextMenuSub>
         <ContextMenuSubTrigger
-          disabled={selectedIds.length !== 1}
+          disabled={
+            selectedIds.length !== 1 ||
+            videos?.some((v) => selectedIds.includes(v.id))
+          }
           className="flex items-center gap-2"
           onMouseEnter={() => {
             // Reset input value and set target when hovering over the submenu trigger
             setIsolateInputValue("");
-            if (selectedIds.length === 1) {
+            if (
+              selectedIds.length === 1 &&
+              !videos?.some((v) => v.id === selectedIds[0])
+            ) {
               setIsolateTarget(selectedIds[0]);
             }
           }}
@@ -215,7 +296,10 @@ export const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
       </ContextMenuItem>
       <ContextMenuSub>
         <ContextMenuSubTrigger
-          disabled={selectedIds.length === 0}
+          disabled={
+            selectedIds.length === 0 ||
+            videos?.some((v) => selectedIds.includes(v.id))
+          }
           className="flex items-center gap-2"
         >
           <Layers className="h-4 w-4" />
@@ -281,16 +365,41 @@ export const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
         </ContextMenuSubContent>
       </ContextMenuSub>
       <ContextMenuItem
-        onClick={() => {
-          selectedIds.forEach((id) => {
+        onClick={async () => {
+          for (const id of selectedIds) {
             const image = images.find((img) => img.id === id);
+            const video = videos?.find((vid) => vid.id === id);
+
             if (image) {
               const link = document.createElement("a");
               link.download = `image-${Date.now()}.png`;
               link.href = image.src;
               link.click();
+            } else if (video) {
+              try {
+                // For videos, we need to fetch as blob to force download
+                const response = await fetch(video.src);
+                const blob = await response.blob();
+                const blobUrl = URL.createObjectURL(blob);
+
+                const link = document.createElement("a");
+                link.download = `video-${Date.now()}.mp4`;
+                link.href = blobUrl;
+                link.click();
+
+                // Clean up the blob URL after a short delay
+                setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
+              } catch (error) {
+                console.error("Failed to download video:", error);
+                // Fallback to regular download if fetch fails
+                const link = document.createElement("a");
+                link.download = `video-${Date.now()}.mp4`;
+                link.href = video.src;
+                link.target = "_blank";
+                link.click();
+              }
             }
-          });
+          }
         }}
         disabled={selectedIds.length === 0}
         className="flex items-center gap-2"

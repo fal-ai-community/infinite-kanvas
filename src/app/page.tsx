@@ -54,20 +54,35 @@ import { createFalClient } from "@fal-ai/client";
 // Import extracted components
 import { ShortcutBadge } from "@/components/canvas/ShortcutBadge";
 import { StreamingImage } from "@/components/canvas/StreamingImage";
+import { StreamingVideo } from "@/components/canvas/StreamingVideo";
 import { CropOverlayWrapper } from "@/components/canvas/CropOverlayWrapper";
 import { CanvasImage } from "@/components/canvas/CanvasImage";
+import { CanvasVideo } from "@/components/canvas/CanvasVideo";
+import { VideoControls } from "@/components/canvas/VideoControls";
+import { ImageToVideoDialog } from "@/components/canvas/ImageToVideoDialog";
+import { VideoToVideoDialog } from "@/components/canvas/VideoToVideoDialog";
+import { ExtendVideoDialog } from "@/components/canvas/ExtendVideoDialog";
+import { RemoveVideoBackgroundDialog } from "@/components/canvas/VideoModelComponents";
+import { getVideoModelById } from "@/lib/video-models";
 
 // Import types
 import type {
   PlacedImage,
+  PlacedVideo,
   HistoryState,
   GenerationSettings,
+  VideoGenerationSettings,
   ActiveGeneration,
+  ActiveVideoGeneration,
   SelectionBox,
 } from "@/types/canvas";
 
-import { imageToCanvasElement } from "@/utils/canvas-utils";
+import {
+  imageToCanvasElement,
+  videoToCanvasElement,
+} from "@/utils/canvas-utils";
 import { checkOS } from "@/utils/os-utils";
+import { convertImageToVideo } from "@/utils/video-utils";
 
 // Import additional extracted components
 import { useFalClient } from "@/hooks/useFalClient";
@@ -77,6 +92,7 @@ import { MiniMap } from "@/components/canvas/MiniMap";
 import { ZoomControls } from "@/components/canvas/ZoomControls";
 import { MobileToolbar } from "@/components/canvas/MobileToolbar";
 import { CanvasContextMenu } from "@/components/canvas/CanvasContextMenu";
+import { VideoOverlays } from "@/components/canvas/VideoOverlays";
 import { DimensionDisplay } from "@/components/canvas/DimensionDisplay";
 import Image from "next/image";
 
@@ -90,8 +106,12 @@ import { handleRemoveBackground as handleRemoveBackgroundHandler } from "@/lib/h
 
 export default function OverlayPage() {
   const [images, setImages] = useState<PlacedImage[]>([]);
+  const [videos, setVideos] = useState<PlacedVideo[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isStorageLoaded, setIsStorageLoaded] = useState(false);
+  const [visibleIndicators, setVisibleIndicators] = useState<Set<string>>(
+    new Set()
+  );
   const simpsonsStyle = styleModels.find((m) => m.id === "simpsons");
   const { toast } = useToast();
 
@@ -104,6 +124,9 @@ export default function OverlayPage() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [activeGenerations, setActiveGenerations] = useState<
     Map<string, ActiveGeneration>
+  >(new Map());
+  const [activeVideoGenerations, setActiveVideoGenerations] = useState<
+    Map<string, ActiveVideoGeneration>
   >(new Map());
   const [selectionBox, setSelectionBox] = useState<SelectionBox>({
     startX: 0,
@@ -119,9 +142,13 @@ export default function OverlayPage() {
     Map<string, { x: number; y: number }>
   >(new Map());
   const [isDraggingImage, setIsDraggingImage] = useState(false);
+  const [hiddenVideoControlsIds, setHiddenVideoControlsIds] = useState<
+    Set<string>
+  >(new Set());
+  // Use a consistent initial value for server and client to avoid hydration errors
   const [canvasSize, setCanvasSize] = useState({
-    width: typeof window !== "undefined" ? window.innerWidth : 1200,
-    height: typeof window !== "undefined" ? window.innerHeight : 800,
+    width: 1200,
+    height: 800,
   });
   const [isCanvasReady, setIsCanvasReady] = useState(false);
   const [isPanningCanvas, setIsPanningCanvas] = useState(false);
@@ -138,13 +165,40 @@ export default function OverlayPage() {
   const [isIsolating, setIsIsolating] = useState(false);
   const [isStyleDialogOpen, setIsStyleDialogOpen] = useState(false);
   const [isApiKeyDialogOpen, setIsApiKeyDialogOpen] = useState(false);
+  const [isImageToVideoDialogOpen, setIsImageToVideoDialogOpen] =
+    useState(false);
+  const [selectedImageForVideo, setSelectedImageForVideo] = useState<
+    string | null
+  >(null);
+  const [isConvertingToVideo, setIsConvertingToVideo] = useState(false);
+  const [isVideoToVideoDialogOpen, setIsVideoToVideoDialogOpen] =
+    useState(false);
+  const [selectedVideoForVideo, setSelectedVideoForVideo] = useState<
+    string | null
+  >(null);
+  const [isTransformingVideo, setIsTransformingVideo] = useState(false);
+  const [isExtendVideoDialogOpen, setIsExtendVideoDialogOpen] = useState(false);
+  const [selectedVideoForExtend, setSelectedVideoForExtend] = useState<
+    string | null
+  >(null);
+  const [isExtendingVideo, setIsExtendingVideo] = useState(false);
+  const [
+    isRemoveVideoBackgroundDialogOpen,
+    setIsRemoveVideoBackgroundDialogOpen,
+  ] = useState(false);
+  const [
+    selectedVideoForBackgroundRemoval,
+    setSelectedVideoForBackgroundRemoval,
+  ] = useState<string | null>(null);
+  const [isRemovingVideoBackground, setIsRemovingVideoBackground] =
+    useState(false);
   const [customApiKey, setCustomApiKey] = useState<string>("");
   const [tempApiKey, setTempApiKey] = useState<string>("");
   const [_, setIsSaving] = useState(false);
 
   // Touch event states for mobile
   const [lastTouchDistance, setLastTouchDistance] = useState<number | null>(
-    null,
+    null
   );
   const [lastTouchCenter, setLastTouchCenter] = useState<{
     x: number;
@@ -160,15 +214,525 @@ export default function OverlayPage() {
   // Direct FAL upload function using proxy
 
   const { mutateAsync: removeBackground } = useMutation(
-    trpc.removeBackground.mutationOptions(),
+    trpc.removeBackground.mutationOptions()
   );
 
+  // Function to handle the "Convert to Video" option in the context menu
+  const handleConvertToVideo = (imageId: string) => {
+    const image = images.find((img) => img.id === imageId);
+    if (!image) return;
+
+    setSelectedImageForVideo(imageId);
+    setIsImageToVideoDialogOpen(true);
+  };
+
+  // Function to handle the image-to-video conversion
+  const handleImageToVideoConversion = async (
+    settings: VideoGenerationSettings
+  ) => {
+    if (!selectedImageForVideo) return;
+
+    const image = images.find((img) => img.id === selectedImageForVideo);
+    if (!image) return;
+
+    try {
+      setIsConvertingToVideo(true);
+
+      // Upload image if it's a data URL
+      let imageUrl = image.src;
+      if (imageUrl.startsWith("data:")) {
+        const uploadResult = await falClient.storage.upload(
+          await (await fetch(imageUrl)).blob()
+        );
+        imageUrl = uploadResult;
+      }
+
+      // Create a unique ID for this generation
+      const generationId = `img2vid_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+
+      // Add to active generations
+      setActiveVideoGenerations((prev) => {
+        const newMap = new Map(prev);
+        newMap.set(generationId, {
+          imageUrl,
+          prompt: settings.prompt || "",
+          duration: settings.duration || 5,
+          modelId: settings.modelId, // Add video modelId
+          resolution: settings.resolution || "720p",
+          cameraFixed: settings.cameraFixed,
+          seed: settings.seed,
+          sourceImageId: selectedImageForVideo, // Store the source image ID
+        });
+        return newMap;
+      });
+
+      // Close the dialog
+      setIsImageToVideoDialogOpen(false);
+
+      // Get video model name for toast display
+      let modelName = "Video Model";
+      const modelId = settings.modelId || "ltx-video"; // Default to ltx-video
+      const { getVideoModelById } = await import("@/lib/video-models");
+      const model = getVideoModelById(modelId);
+      if (model) {
+        modelName = model.name;
+      }
+
+      // Create a persistent toast that will stay visible until the conversion completes
+      const toastId = toast({
+        title: `Converting image to video (${modelName} - ${settings.resolution || "Default"})`,
+        description: "This may take a minute...",
+        duration: Infinity, // Make the toast stay until manually dismissed
+      }).id;
+
+      // Store the toast ID with the generation for later reference
+      setActiveVideoGenerations((prev) => {
+        const newMap = new Map(prev);
+        const generation = newMap.get(generationId);
+        if (generation) {
+          newMap.set(generationId, {
+            ...generation,
+            toastId,
+          });
+        }
+        return newMap;
+      });
+    } catch (error) {
+      console.error("Error starting image-to-video conversion:", error);
+      toast({
+        title: "Conversion failed",
+        description:
+          error instanceof Error ? error.message : "Failed to start conversion",
+        variant: "destructive",
+      });
+      setIsConvertingToVideo(false);
+    }
+  };
+
+  // Function to handle the "Video to Video" option in the context menu
+  const handleVideoToVideo = (videoId: string) => {
+    const video = videos.find((vid) => vid.id === videoId);
+    if (!video) return;
+
+    setSelectedVideoForVideo(videoId);
+    setIsVideoToVideoDialogOpen(true);
+  };
+
+  // Function to handle the video-to-video transformation
+  const handleVideoToVideoTransformation = async (
+    settings: VideoGenerationSettings
+  ) => {
+    if (!selectedVideoForVideo) return;
+
+    const video = videos.find((vid) => vid.id === selectedVideoForVideo);
+    if (!video) return;
+
+    try {
+      setIsTransformingVideo(true);
+
+      // Upload video if it's a data URL or local file
+      let videoUrl = video.src;
+      if (videoUrl.startsWith("data:") || videoUrl.startsWith("blob:")) {
+        const uploadResult = await falClient.storage.upload(
+          await (await fetch(videoUrl)).blob()
+        );
+        videoUrl = uploadResult;
+      }
+
+      // Create a unique ID for this generation
+      const generationId = `vid2vid_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+
+      // Add to active generations
+      setActiveVideoGenerations((prev) => {
+        const newMap = new Map(prev);
+        newMap.set(generationId, {
+          ...settings, // Include all settings first
+          imageUrl: videoUrl, // Using imageUrl field for video URL
+          duration: video.duration || settings.duration || 5,
+          modelId: settings.modelId || "seedance-pro",
+          resolution: settings.resolution || "720p",
+          isVideoToVideo: true,
+          sourceVideoId: selectedVideoForVideo,
+        });
+        return newMap;
+      });
+
+      // Close the dialog
+      setIsVideoToVideoDialogOpen(false);
+
+      // Get video model name for toast display
+      let modelName = "Video Model";
+      const modelId = settings.modelId || "seedance-pro";
+      const { getVideoModelById } = await import("@/lib/video-models");
+      const model = getVideoModelById(modelId);
+      if (model) {
+        modelName = model.name;
+      }
+
+      // Create a persistent toast
+      const toastId = toast({
+        title: `Transforming video (${modelName} - ${settings.resolution || "Default"})`,
+        description: "This may take a minute...",
+        duration: Infinity,
+      }).id;
+
+      // Store the toast ID with the generation
+      setActiveVideoGenerations((prev) => {
+        const newMap = new Map(prev);
+        const generation = newMap.get(generationId);
+        if (generation) {
+          newMap.set(generationId, {
+            ...generation,
+            toastId,
+          });
+        }
+        return newMap;
+      });
+    } catch (error) {
+      console.error("Error starting video-to-video transformation:", error);
+      toast({
+        title: "Transformation failed",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Failed to start transformation",
+        variant: "destructive",
+      });
+      setIsTransformingVideo(false);
+    }
+  };
+
+  // Function to handle the "Extend Video" option in the context menu
+  const handleExtendVideo = (videoId: string) => {
+    const video = videos.find((vid) => vid.id === videoId);
+    if (!video) return;
+
+    setSelectedVideoForExtend(videoId);
+    setIsExtendVideoDialogOpen(true);
+  };
+
+  // Function to handle the video extension
+  const handleVideoExtension = async (settings: VideoGenerationSettings) => {
+    if (!selectedVideoForExtend) return;
+
+    const video = videos.find((vid) => vid.id === selectedVideoForExtend);
+    if (!video) return;
+
+    try {
+      setIsExtendingVideo(true);
+
+      // Upload video if it's a data URL or local file
+      let videoUrl = video.src;
+      if (videoUrl.startsWith("data:") || videoUrl.startsWith("blob:")) {
+        const uploadResult = await falClient.storage.upload(
+          await (await fetch(videoUrl)).blob()
+        );
+        videoUrl = uploadResult;
+      }
+
+      // Create a unique ID for this generation
+      const generationId = `vid_ext_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+
+      // Add to active generations
+      setActiveVideoGenerations((prev) => {
+        const newMap = new Map(prev);
+        newMap.set(generationId, {
+          ...settings, // Include all settings first
+          imageUrl: videoUrl, // Using imageUrl field for video URL
+          duration: video.duration || settings.duration || 5,
+          modelId: settings.modelId || "seedance-pro",
+          resolution: settings.resolution || "720p",
+          isVideoToVideo: true,
+          isVideoExtension: true,
+          sourceVideoId: selectedVideoForExtend,
+        });
+        return newMap;
+      });
+
+      // Close the dialog
+      setIsExtendVideoDialogOpen(false);
+
+      // Get video model name for toast display
+      let modelName = "Video Model";
+      const modelId = settings.modelId || "seedance-pro";
+      const { getVideoModelById } = await import("@/lib/video-models");
+      const model = getVideoModelById(modelId);
+      if (model) {
+        modelName = model.name;
+      }
+
+      // Create a persistent toast
+      const toastId = toast({
+        title: `Extending video (${modelName} - ${settings.resolution || "Default"})`,
+        description: "This may take a minute...",
+        duration: Infinity,
+      }).id;
+
+      // Store the toast ID with the generation
+      setActiveVideoGenerations((prev) => {
+        const newMap = new Map(prev);
+        const generation = newMap.get(generationId);
+        if (generation) {
+          newMap.set(generationId, {
+            ...generation,
+            toastId,
+          });
+        }
+        return newMap;
+      });
+    } catch (error) {
+      console.error("Error starting video extension:", error);
+      toast({
+        title: "Extension failed",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Failed to start video extension",
+        variant: "destructive",
+      });
+      setIsExtendingVideo(false);
+    }
+  };
+
+  // Function to handle video generation completion
+  const handleVideoGenerationComplete = async (
+    videoId: string,
+    videoUrl: string,
+    duration: number
+  ) => {
+    try {
+      console.log("Video generation complete:", {
+        videoId,
+        videoUrl,
+        duration,
+      });
+
+      // Get the generation data to check for source image ID
+      const generation = activeVideoGenerations.get(videoId);
+      const sourceImageId = generation?.sourceImageId || selectedImageForVideo;
+      const isBackgroundRemoval =
+        generation?.modelId === "bria-video-background-removal";
+
+      // Dismiss progress toast if it exists
+      if (generation?.toastId) {
+        const toastElement = document.querySelector(
+          `[data-toast-id="${generation.toastId}"]`
+        );
+        if (toastElement) {
+          // Trigger dismiss by clicking the close button
+          const closeButton = toastElement.querySelector(
+            "[data-radix-toast-close]"
+          );
+          if (closeButton instanceof HTMLElement) {
+            closeButton.click();
+          }
+        }
+      }
+
+      // Find the original image if this was an image-to-video conversion
+      if (sourceImageId) {
+        const image = images.find((img) => img.id === sourceImageId);
+        if (image) {
+          // Create a video element based on the original image
+          const video = convertImageToVideo(
+            image,
+            videoUrl,
+            duration,
+            false // Don't replace the original image
+          );
+
+          // Position the video to the right of the source image
+          // Add a small gap between the image and video (20px)
+          video.x = image.x + image.width + 20;
+          video.y = image.y; // Keep the same vertical position
+
+          // Add the video to the videos state
+          setVideos((prev) => [...prev, { ...video, isVideo: true as const }]);
+
+          // Save to history
+          saveToHistory();
+
+          // Show success toast
+          toast({
+            title: "Video created successfully",
+            description:
+              "The video has been added to the right of the source image.",
+          });
+        } else {
+          console.error("Source image not found:", sourceImageId);
+          toast({
+            title: "Error creating video",
+            description: "The source image could not be found.",
+            variant: "destructive",
+          });
+        }
+      } else if (generation?.sourceVideoId || generation?.isVideoToVideo) {
+        // This was a video-to-video transformation or extension
+        const sourceVideoId =
+          generation?.sourceVideoId ||
+          selectedVideoForVideo ||
+          selectedVideoForExtend;
+        const isExtension = generation?.isVideoExtension;
+
+        if (sourceVideoId) {
+          const sourceVideo = videos.find((vid) => vid.id === sourceVideoId);
+          if (sourceVideo) {
+            // Create a new video based on the source video
+            const newVideo: PlacedVideo = {
+              id: `video_${Date.now()}_${Math.random().toString(36).substring(7)}`,
+              src: videoUrl,
+              x: sourceVideo.x + sourceVideo.width + 20, // Position to the right
+              y: sourceVideo.y,
+              width: sourceVideo.width,
+              height: sourceVideo.height,
+              rotation: 0,
+              isPlaying: false,
+              currentTime: 0,
+              duration: duration,
+              volume: 1,
+              muted: false,
+              isLooping: false,
+              isVideo: true as const,
+            };
+
+            // Add the transformed video to the canvas
+            setVideos((prev) => [...prev, newVideo]);
+
+            // Save to history
+            saveToHistory();
+
+            if (isExtension) {
+              toast({
+                title: "Video extended successfully",
+                description:
+                  "The extended video has been added to the right of the source video.",
+              });
+            } else if (
+              generation?.modelId === "bria-video-background-removal"
+            ) {
+              toast({
+                title: "Background removed successfully",
+                description:
+                  "The video with removed background has been added to the right of the source video.",
+              });
+            } else {
+              toast({
+                title: "Video transformed successfully",
+                description:
+                  "The transformed video has been added to the right of the source video.",
+              });
+            }
+          } else {
+            console.error("Source video not found:", sourceVideoId);
+            toast({
+              title: "Error creating video",
+              description: "The source video could not be found.",
+              variant: "destructive",
+            });
+          }
+        }
+
+        // Reset the transformation/extension state
+        setIsTransformingVideo(false);
+        setSelectedVideoForVideo(null);
+        setIsExtendingVideo(false);
+        setSelectedVideoForExtend(null);
+      } else {
+        // This was a text-to-video generation
+        // For now, just log it as the placement function is missing
+        console.log("Generated video URL:", videoUrl);
+        toast({
+          title: "Video generated",
+          description: "Video is ready but cannot be placed on canvas yet.",
+        });
+      }
+
+      // Remove from active generations
+      setActiveVideoGenerations((prev) => {
+        const newMap = new Map(prev);
+        newMap.delete(videoId);
+        return newMap;
+      });
+
+      // Reset appropriate flags based on generation type
+      if (isBackgroundRemoval) {
+        setIsRemovingVideoBackground(false);
+      } else {
+        setIsConvertingToVideo(false);
+        setSelectedImageForVideo(null);
+      }
+    } catch (error) {
+      console.error("Error completing video generation:", error);
+
+      toast({
+        title: "Error creating video",
+        description:
+          error instanceof Error ? error.message : "Failed to create video",
+        variant: "destructive",
+      });
+
+      // Remove from active generations even on error
+      setActiveVideoGenerations((prev) => {
+        const newMap = new Map(prev);
+        newMap.delete(videoId);
+        return newMap;
+      });
+
+      setIsConvertingToVideo(false);
+      setSelectedImageForVideo(null);
+    }
+  };
+
+  // Function to handle video generation errors
+  const handleVideoGenerationError = (videoId: string, error: string) => {
+    console.error("Video generation error:", error);
+
+    // Check if this was a background removal
+    const generation = activeVideoGenerations.get(videoId);
+    const isBackgroundRemoval =
+      generation?.modelId === "bria-video-background-removal";
+
+    toast({
+      title: isBackgroundRemoval
+        ? "Background removal failed"
+        : "Video generation failed",
+      description: error,
+      variant: "destructive",
+    });
+
+    // Remove from active generations
+    setActiveVideoGenerations((prev) => {
+      const newMap = new Map(prev);
+      newMap.delete(videoId);
+      return newMap;
+    });
+
+    // Reset appropriate flags
+    if (isBackgroundRemoval) {
+      setIsRemovingVideoBackground(false);
+    } else {
+      setIsConvertingToVideo(false);
+      setIsTransformingVideo(false);
+      setIsExtendingVideo(false);
+    }
+  };
+
+  // Function to handle video generation progress
+  const handleVideoGenerationProgress = (
+    videoId: string,
+    progress: number,
+    status: string
+  ) => {
+    // You could update a progress indicator here if needed
+    console.log(`Video generation progress: ${progress}% - ${status}`);
+  };
+
   const { mutateAsync: isolateObject } = useMutation(
-    trpc.isolateObject.mutationOptions(),
+    trpc.isolateObject.mutationOptions()
   );
 
   const { mutateAsync: generateTextToImage } = useMutation(
-    trpc.generateTextToImage.mutationOptions(),
+    trpc.generateTextToImage.mutationOptions()
   );
 
   // Save current state to storage
@@ -178,7 +742,10 @@ export default function OverlayPage() {
 
       // Save canvas state (positions, transforms, etc.)
       const canvasState: CanvasState = {
-        elements: images.map(imageToCanvasElement),
+        elements: [
+          ...images.map(imageToCanvasElement),
+          ...videos.map(videoToCanvasElement),
+        ],
         backgroundColor: "#ffffff",
         lastModified: Date.now(),
         viewport: viewport,
@@ -200,7 +767,22 @@ export default function OverlayPage() {
         }
       }
 
-      // Clean up unused images
+      // Save video data to IndexedDB
+      for (const video of videos) {
+        // Skip if it's a placeholder for generation
+        if (
+          video.src.startsWith("data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP")
+        )
+          continue;
+
+        // Check if we already have this video stored
+        const existingVideo = await canvasStorage.getVideo(video.id);
+        if (!existingVideo) {
+          await canvasStorage.saveVideo(video.src, video.duration, video.id);
+        }
+      }
+
+      // Clean up unused images and videos
       await canvasStorage.cleanupOldData();
 
       // Brief delay to show the indicator
@@ -209,7 +791,7 @@ export default function OverlayPage() {
       console.error("Failed to save to storage:", error);
       setIsSaving(false);
     }
-  }, [images, viewport]);
+  }, [images, videos, viewport]);
 
   // Load state from storage
   const loadFromStorage = useCallback(async () => {
@@ -221,6 +803,7 @@ export default function OverlayPage() {
       }
 
       const loadedImages: PlacedImage[] = [];
+      const loadedVideos: PlacedVideo[] = [];
 
       for (const element of canvasState.elements) {
         if (element.type === "image" && element.imageId) {
@@ -242,16 +825,47 @@ export default function OverlayPage() {
               }),
             });
           }
+        } else if (element.type === "video" && element.videoId) {
+          const videoData = await canvasStorage.getVideo(element.videoId);
+          if (videoData) {
+            loadedVideos.push({
+              id: element.id,
+              src: videoData.originalDataUrl,
+              x: element.transform.x,
+              y: element.transform.y,
+              width: element.width || 300,
+              height: element.height || 300,
+              rotation: element.transform.rotation,
+              isVideo: true,
+              duration: element.duration || videoData.duration,
+              currentTime: element.currentTime || 0,
+              isPlaying: element.isPlaying || false,
+              volume: element.volume || 1,
+              muted: element.muted || false,
+              isLoaded: false, // Initialize as not loaded
+              ...(element.transform.cropBox && {
+                cropX: element.transform.cropBox.x,
+                cropY: element.transform.cropBox.y,
+                cropWidth: element.transform.cropBox.width,
+                cropHeight: element.transform.cropBox.height,
+              }),
+            });
+          }
         }
       }
 
+      // Set loaded images and videos
       if (loadedImages.length > 0) {
         setImages(loadedImages);
+      }
 
-        // Restore viewport if available
-        if (canvasState.viewport) {
-          setViewport(canvasState.viewport);
-        }
+      if (loadedVideos.length > 0) {
+        setVideos(loadedVideos);
+      }
+
+      // Restore viewport if available
+      if (canvasState.viewport) {
+        setViewport(canvasState.viewport);
       }
     } catch (error) {
       console.error("Failed to load from storage:", error);
@@ -285,18 +899,23 @@ export default function OverlayPage() {
 
   // Save state to history
   const saveToHistory = useCallback(() => {
-    const newState = { images: [...images], selectedIds: [...selectedIds] };
+    const newState = {
+      images: [...images],
+      videos: [...videos],
+      selectedIds: [...selectedIds],
+    };
     const newHistory = history.slice(0, historyIndex + 1);
     newHistory.push(newState);
     setHistory(newHistory);
     setHistoryIndex(newHistory.length - 1);
-  }, [images, selectedIds, history, historyIndex]);
+  }, [images, videos, selectedIds, history, historyIndex]);
 
   // Undo
   const undo = useCallback(() => {
     if (historyIndex > 0) {
       const prevState = history[historyIndex - 1];
       setImages(prevState.images);
+      setVideos(prevState.videos || []);
       setSelectedIds(prevState.selectedIds);
       setHistoryIndex(historyIndex - 1);
     }
@@ -307,6 +926,7 @@ export default function OverlayPage() {
     if (historyIndex < history.length - 1) {
       const nextState = history[historyIndex + 1];
       setImages(nextState.images);
+      setVideos(nextState.videos || []);
       setSelectedIds(nextState.selectedIds);
       setHistoryIndex(historyIndex + 1);
     }
@@ -461,7 +1081,7 @@ export default function OverlayPage() {
   const resizeImageIfNeeded = async (
     dataUrl: string,
     maxWidth: number = 2048,
-    maxHeight: number = 2048,
+    maxHeight: number = 2048
   ): Promise<string> => {
     return new Promise((resolve, reject) => {
       const img = new window.Image();
@@ -512,7 +1132,7 @@ export default function OverlayPage() {
             reader.readAsDataURL(blob);
           },
           "image/jpeg",
-          0.9, // 90% quality
+          0.9 // 90% quality
         );
       };
       img.onerror = () => reject(new Error("Failed to load image"));
@@ -526,7 +1146,7 @@ export default function OverlayPage() {
     cropX: number,
     cropY: number,
     cropWidth: number,
-    cropHeight: number,
+    cropHeight: number
   ): Promise<string> => {
     return new Promise((resolve, reject) => {
       const img = new window.Image();
@@ -553,7 +1173,7 @@ export default function OverlayPage() {
           0,
           0,
           canvas.width,
-          canvas.height,
+          canvas.height
         );
 
         // Convert to data URL
@@ -576,7 +1196,7 @@ export default function OverlayPage() {
   // Handle file upload
   const handleFileUpload = (
     files: FileList | null,
-    position?: { x: number; y: number },
+    position?: { x: number; y: number }
   ) => {
     if (!files) return;
 
@@ -721,7 +1341,7 @@ export default function OverlayPage() {
       const touch2 = { x: touches[1].clientX, y: touches[1].clientY };
 
       const distance = Math.sqrt(
-        Math.pow(touch2.x - touch1.x, 2) + Math.pow(touch2.y - touch1.y, 2),
+        Math.pow(touch2.x - touch1.x, 2) + Math.pow(touch2.y - touch1.y, 2)
       );
 
       const center = {
@@ -773,7 +1393,7 @@ export default function OverlayPage() {
       const touch2 = { x: touches[1].clientX, y: touches[1].clientY };
 
       const distance = Math.sqrt(
-        Math.pow(touch2.x - touch1.x, 2) + Math.pow(touch2.y - touch1.y, 2),
+        Math.pow(touch2.x - touch1.x, 2) + Math.pow(touch2.y - touch1.y, 2)
       );
 
       const center = {
@@ -847,7 +1467,7 @@ export default function OverlayPage() {
   const handleSelect = (id: string, e: Konva.KonvaEventObject<MouseEvent>) => {
     if (e.evt.shiftKey || e.evt.metaKey || e.evt.ctrlKey) {
       setSelectedIds((prev) =>
-        prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id],
+        prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
       );
     } else {
       setSelectedIds([id]);
@@ -950,7 +1570,7 @@ export default function OverlayPage() {
 
     if (!isSelecting) return;
 
-    // Calculate which images are in the selection box
+    // Calculate which images and videos are in the selection box
     const box = {
       x: Math.min(selectionBox.startX, selectionBox.endX),
       y: Math.min(selectionBox.startY, selectionBox.endY),
@@ -960,7 +1580,8 @@ export default function OverlayPage() {
 
     // Only select if the box has some size
     if (box.width > 5 || box.height > 5) {
-      const selected = images.filter((img) => {
+      // Check for images in the selection box
+      const selectedImages = images.filter((img) => {
         // Check if image intersects with selection box
         return !(
           img.x + img.width < box.x ||
@@ -970,8 +1591,25 @@ export default function OverlayPage() {
         );
       });
 
-      if (selected.length > 0) {
-        setSelectedIds(selected.map((img) => img.id));
+      // Check for videos in the selection box
+      const selectedVideos = videos.filter((vid) => {
+        // Check if video intersects with selection box
+        return !(
+          vid.x + vid.width < box.x ||
+          vid.x > box.x + box.width ||
+          vid.y + vid.height < box.y ||
+          vid.y > box.y + box.height
+        );
+      });
+
+      // Combine selected images and videos
+      const selectedIds = [
+        ...selectedImages.map((img) => img.id),
+        ...selectedVideos.map((vid) => vid.id),
+      ];
+
+      if (selectedIds.length > 0) {
+        setSelectedIds(selectedIds);
       }
     }
 
@@ -1006,12 +1644,15 @@ export default function OverlayPage() {
     // Save to history before deleting
     saveToHistory();
     setImages((prev) => prev.filter((img) => !selectedIds.includes(img.id)));
+    setVideos((prev) => prev.filter((vid) => !selectedIds.includes(vid.id)));
     setSelectedIds([]);
   };
 
   const handleDuplicate = () => {
     // Save to history before duplicating
     saveToHistory();
+
+    // Duplicate selected images
     const selectedImages = images.filter((img) => selectedIds.includes(img.id));
     const newImages = selectedImages.map((img) => ({
       ...img,
@@ -1019,8 +1660,29 @@ export default function OverlayPage() {
       x: img.x + 20,
       y: img.y + 20,
     }));
+
+    // Duplicate selected videos
+    const selectedVideos = videos.filter((vid) => selectedIds.includes(vid.id));
+    const newVideos = selectedVideos.map((vid) => ({
+      ...vid,
+      id: `vid-${Date.now()}-${Math.random()}`,
+      x: vid.x + 20,
+      y: vid.y + 20,
+      // Reset playback state for duplicated videos
+      currentTime: 0,
+      isPlaying: false,
+    }));
+
+    // Update both arrays
     setImages((prev) => [...prev, ...newImages]);
-    setSelectedIds(newImages.map((img) => img.id));
+    setVideos((prev) => [...prev, ...newVideos]);
+
+    // Select all duplicated items
+    const newIds = [
+      ...newImages.map((img) => img.id),
+      ...newVideos.map((vid) => vid.id),
+    ];
+    setSelectedIds(newIds);
   };
 
   const handleRemoveBackground = async () => {
@@ -1037,6 +1699,126 @@ export default function OverlayPage() {
     });
   };
 
+  // Function to handle the "Remove Background from Video" option in the context menu
+  const handleRemoveVideoBackground = (videoId: string) => {
+    const video = videos.find((vid) => vid.id === videoId);
+    if (!video) return;
+
+    setSelectedVideoForBackgroundRemoval(videoId);
+    setIsRemoveVideoBackgroundDialogOpen(true);
+  };
+
+  // Function to handle the video background removal
+  const handleVideoBackgroundRemoval = async (backgroundColor: string) => {
+    if (!selectedVideoForBackgroundRemoval) return;
+
+    const video = videos.find(
+      (vid) => vid.id === selectedVideoForBackgroundRemoval
+    );
+    if (!video) return;
+
+    try {
+      setIsRemovingVideoBackground(true);
+
+      // Close the dialog
+      setIsRemoveVideoBackgroundDialogOpen(false);
+
+      // Don't show a toast here - the StreamingVideo component will handle progress
+
+      // Upload video if it's a data URL or blob URL
+      let videoUrl = video.src;
+      if (videoUrl.startsWith("data:") || videoUrl.startsWith("blob:")) {
+        const uploadResult = await falClient.storage.upload(
+          await (await fetch(videoUrl)).blob()
+        );
+        videoUrl = uploadResult;
+      }
+
+      // Create a unique ID for this generation
+      const generationId = `bg_removal_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+
+      // Map the background color to the API's expected format
+      const colorMap: Record<string, string> = {
+        transparent: "Transparent",
+        black: "Black",
+        white: "White",
+        gray: "Gray",
+        red: "Red",
+        green: "Green",
+        blue: "Blue",
+        yellow: "Yellow",
+        cyan: "Cyan",
+        magenta: "Magenta",
+        orange: "Orange",
+      };
+
+      // Map to API format
+      const apiBackgroundColor = colorMap[backgroundColor] || "Black";
+
+      // Add to active generations
+      setActiveVideoGenerations((prev) => {
+        const newMap = new Map(prev);
+        newMap.set(generationId, {
+          imageUrl: videoUrl,
+          prompt: `Removing background from video`,
+          duration: video.duration || 5,
+          modelId: "bria-video-background-removal",
+          modelConfig: getVideoModelById("bria-video-background-removal"),
+          sourceVideoId: video.id,
+          backgroundColor: apiBackgroundColor,
+        });
+        return newMap;
+      });
+
+      // Create a persistent toast that will stay visible until the conversion completes
+      const toastId = toast({
+        title: "Removing background from video",
+        description: "This may take several minutes...",
+        duration: Infinity, // Make the toast stay until manually dismissed
+      }).id;
+
+      // Store the toast ID with the generation for later reference
+      setActiveVideoGenerations((prev) => {
+        const newMap = new Map(prev);
+        const generation = newMap.get(generationId);
+        if (generation) {
+          newMap.set(generationId, {
+            ...generation,
+            toastId,
+          });
+        }
+        return newMap;
+      });
+
+      // Remove the direct API call since StreamingVideo will handle it
+      // The StreamingVideo component will handle the actual API call and progress updates
+    } catch (error) {
+      console.error("Error removing video background:", error);
+      toast({
+        title: "Error processing video",
+        description:
+          error instanceof Error ? error.message : "An error occurred",
+        variant: "destructive",
+      });
+
+      // Remove from active generations
+      setActiveVideoGenerations((prev) => {
+        const newMap = new Map(prev);
+        const generationId = Array.from(prev.keys()).find(
+          (key) =>
+            prev.get(key)?.sourceVideoId === selectedVideoForBackgroundRemoval
+        );
+        if (generationId) {
+          newMap.delete(generationId);
+        }
+        return newMap;
+      });
+    } finally {
+      // Don't set isRemovingVideoBackground to false here - let the completion/error handlers do it
+      setSelectedVideoForBackgroundRemoval(null);
+    }
+  };
+
   const sendToFront = useCallback(() => {
     if (selectedIds.length === 0) return;
 
@@ -1049,7 +1831,7 @@ export default function OverlayPage() {
 
       // Get remaining images
       const remainingImages = prev.filter(
-        (img) => !selectedIds.includes(img.id),
+        (img) => !selectedIds.includes(img.id)
       );
 
       // Place selected images at the end (top layer)
@@ -1069,7 +1851,7 @@ export default function OverlayPage() {
 
       // Get remaining images
       const remainingImages = prev.filter(
-        (img) => !selectedIds.includes(img.id),
+        (img) => !selectedIds.includes(img.id)
       );
 
       // Place selected images at the beginning (bottom layer)
@@ -1174,7 +1956,7 @@ export default function OverlayPage() {
         0,
         0,
         canvas.width,
-        canvas.height,
+        canvas.height
       );
 
       // Convert to blob and upload
@@ -1193,7 +1975,7 @@ export default function OverlayPage() {
         dataUrl,
         falClient,
         toast,
-        setIsApiKeyDialogOpen,
+        setIsApiKeyDialogOpen
       );
 
       // Isolate object using EVF-SAM2
@@ -1238,7 +2020,7 @@ export default function OverlayPage() {
             "New image loaded successfully:",
             testImg.width,
             "x",
-            testImg.height,
+            testImg.height
           );
 
           // Create a test canvas to verify the image has transparency
@@ -1292,7 +2074,7 @@ export default function OverlayPage() {
             // Replace old image with new one at same index
             const newImages = [...prev];
             const index = newImages.findIndex(
-              (img) => img.id === isolateTarget,
+              (img) => img.id === isolateTarget
             );
             if (index !== -1) {
               newImages[index] = newImage;
@@ -1425,7 +2207,7 @@ export default function OverlayPage() {
     canvas.height = Math.round(combinedHeight * optimalScale);
 
     console.log(
-      `Creating combined image at ${canvas.width}x${canvas.height} (scale: ${optimalScale.toFixed(2)}x)`,
+      `Creating combined image at ${canvas.width}x${canvas.height} (scale: ${optimalScale.toFixed(2)}x)`
     );
 
     // Draw each image in order using the pre-loaded elements
@@ -1447,7 +2229,7 @@ export default function OverlayPage() {
           -scaledWidth / 2,
           -scaledHeight / 2,
           scaledWidth,
-          scaledHeight,
+          scaledHeight
         );
       } else {
         // Handle cropping if exists
@@ -1466,7 +2248,7 @@ export default function OverlayPage() {
             relX,
             relY,
             scaledWidth,
-            scaledHeight,
+            scaledHeight
           );
         } else {
           ctx.drawImage(
@@ -1478,7 +2260,7 @@ export default function OverlayPage() {
             relX,
             relY,
             scaledWidth,
-            scaledHeight,
+            scaledHeight
           );
         }
       }
@@ -1683,14 +2465,14 @@ export default function OverlayPage() {
           apiKey={customApiKey}
           onStreamingUpdate={(id, url) => {
             setImages((prev) =>
-              prev.map((img) => (img.id === id ? { ...img, src: url } : img)),
+              prev.map((img) => (img.id === id ? { ...img, src: url } : img))
             );
           }}
           onComplete={(id, finalUrl) => {
             setImages((prev) =>
               prev.map((img) =>
-                img.id === id ? { ...img, src: finalUrl } : img,
-              ),
+                img.id === id ? { ...img, src: finalUrl } : img
+              )
             );
             setActiveGenerations((prev) => {
               const newMap = new Map(prev);
@@ -1756,10 +2538,14 @@ export default function OverlayPage() {
               <div
                 className="relative bg-white overflow-hidden w-full h-full"
                 style={{
+                  // Use consistent style property names to avoid hydration errors
+                  height: `${canvasSize.height}px`,
+                  width: `${canvasSize.width}px`,
                   minHeight: `${canvasSize.height}px`,
                   minWidth: `${canvasSize.width}px`,
                   cursor: isPanningCanvas ? "grabbing" : "default",
-                  touchAction: "none", // Allow override for specific elements
+                  WebkitTouchCallout: "none", // Add this for iOS
+                  touchAction: "none", // For touch devices
                 }}
               >
                 {isCanvasReady && (
@@ -1791,6 +2577,17 @@ export default function OverlayPage() {
                     onTouchMove={handleTouchMove}
                     onTouchEnd={handleTouchEnd}
                     onContextMenu={(e) => {
+                      // Check if this is a forwarded event from a video overlay
+                      const videoId =
+                        (e.evt as any)?.videoId || (e as any)?.videoId;
+                      if (videoId) {
+                        // This is a right-click on a video
+                        if (!selectedIds.includes(videoId)) {
+                          setSelectedIds([videoId]);
+                        }
+                        return;
+                      }
+
                       // Get clicked position
                       const stage = e.target.getStage();
                       if (!stage) return;
@@ -1803,6 +2600,23 @@ export default function OverlayPage() {
                         x: (point.x - viewport.x) / viewport.scale,
                         y: (point.y - viewport.y) / viewport.scale,
                       };
+
+                      // Check if we clicked on a video first (check in reverse order for top-most)
+                      const clickedVideo = [...videos].reverse().find((vid) => {
+                        return (
+                          canvasPoint.x >= vid.x &&
+                          canvasPoint.x <= vid.x + vid.width &&
+                          canvasPoint.y >= vid.y &&
+                          canvasPoint.y <= vid.y + vid.height
+                        );
+                      });
+
+                      if (clickedVideo) {
+                        if (!selectedIds.includes(clickedVideo.id)) {
+                          setSelectedIds([clickedVideo.id]);
+                        }
+                        return;
+                      }
 
                       // Check if we clicked on an image (check in reverse order for top-most image)
                       const clickedImage = [...images].reverse().find((img) => {
@@ -1868,8 +2682,8 @@ export default function OverlayPage() {
                                 prev.map((img) =>
                                   img.id === image.id
                                     ? { ...img, ...newAttrs }
-                                    : img,
-                                ),
+                                    : img
+                                )
                               );
                             }}
                             onDoubleClick={() => {
@@ -1912,11 +2726,109 @@ export default function OverlayPage() {
                           />
                         ))}
 
+                      {/* Render videos */}
+                      {videos
+                        .filter((video) => {
+                          // Performance optimization: only render visible videos
+                          const buffer = 100; // pixels buffer
+                          const viewBounds = {
+                            left: -viewport.x / viewport.scale - buffer,
+                            top: -viewport.y / viewport.scale - buffer,
+                            right:
+                              (canvasSize.width - viewport.x) / viewport.scale +
+                              buffer,
+                            bottom:
+                              (canvasSize.height - viewport.y) /
+                                viewport.scale +
+                              buffer,
+                          };
+
+                          return !(
+                            video.x + video.width < viewBounds.left ||
+                            video.x > viewBounds.right ||
+                            video.y + video.height < viewBounds.top ||
+                            video.y > viewBounds.bottom
+                          );
+                        })
+                        .map((video) => (
+                          <CanvasVideo
+                            key={video.id}
+                            video={video}
+                            isSelected={selectedIds.includes(video.id)}
+                            onSelect={(e) => handleSelect(video.id, e)}
+                            onChange={(newAttrs) => {
+                              setVideos((prev) =>
+                                prev.map((vid) =>
+                                  vid.id === video.id
+                                    ? { ...vid, ...newAttrs }
+                                    : vid
+                                )
+                              );
+                            }}
+                            onDragStart={() => {
+                              // If dragging a selected item in a multi-selection, keep the selection
+                              // If dragging an unselected item, select only that item
+                              let currentSelectedIds = selectedIds;
+                              if (!selectedIds.includes(video.id)) {
+                                currentSelectedIds = [video.id];
+                                setSelectedIds(currentSelectedIds);
+                              }
+
+                              setIsDraggingImage(true);
+                              // Hide video controls during drag
+                              setHiddenVideoControlsIds(
+                                (prev) => new Set([...prev, video.id])
+                              );
+                              // Save positions of all selected items
+                              const positions = new Map<
+                                string,
+                                { x: number; y: number }
+                              >();
+                              currentSelectedIds.forEach((id) => {
+                                const vid = videos.find((v) => v.id === id);
+                                if (vid) {
+                                  positions.set(id, { x: vid.x, y: vid.y });
+                                }
+                              });
+                              setDragStartPositions(positions);
+                            }}
+                            onDragEnd={() => {
+                              setIsDraggingImage(false);
+                              // Show video controls after drag ends
+                              setHiddenVideoControlsIds((prev) => {
+                                const newSet = new Set(prev);
+                                newSet.delete(video.id);
+                                return newSet;
+                              });
+                              saveToHistory();
+                              setDragStartPositions(new Map());
+                            }}
+                            selectedIds={selectedIds}
+                            videos={videos}
+                            setVideos={setVideos}
+                            isDraggingVideo={isDraggingImage}
+                            isCroppingVideo={false}
+                            dragStartPositions={dragStartPositions}
+                            onResizeStart={() =>
+                              setHiddenVideoControlsIds(
+                                (prev) => new Set([...prev, video.id])
+                              )
+                            }
+                            onResizeEnd={() =>
+                              setHiddenVideoControlsIds((prev) => {
+                                const newSet = new Set(prev);
+                                newSet.delete(video.id);
+                                return newSet;
+                              })
+                            }
+                          />
+                        ))}
+
                       {/* Crop overlay */}
                       {croppingImageId &&
                         (() => {
                           const croppingImage = images.find(
-                            (img) => img.id === croppingImageId,
+                            (img) => img.id === croppingImageId
                           );
                           if (!croppingImage) return null;
 
@@ -1929,8 +2841,8 @@ export default function OverlayPage() {
                                   prev.map((img) =>
                                     img.id === croppingImageId
                                       ? { ...img, ...crop }
-                                      : img,
-                                  ),
+                                      : img
+                                  )
                                 );
                               }}
                               onCropEnd={async () => {
@@ -1951,7 +2863,7 @@ export default function OverlayPage() {
                                         cropX,
                                         cropY,
                                         cropWidth,
-                                        cropHeight,
+                                        cropHeight
                                       );
 
                                     setImages((prev) =>
@@ -1973,13 +2885,13 @@ export default function OverlayPage() {
                                               cropWidth: undefined,
                                               cropHeight: undefined,
                                             }
-                                          : img,
-                                      ),
+                                          : img
+                                      )
                                     );
                                   } catch (error) {
                                     console.error(
                                       "Failed to create cropped image:",
-                                      error,
+                                      error
                                     );
                                   }
                                 }
@@ -1998,6 +2910,7 @@ export default function OverlayPage() {
             <CanvasContextMenu
               selectedIds={selectedIds}
               images={images}
+              videos={videos}
               isGenerating={isGenerating}
               generationSettings={generationSettings}
               isolateInputValue={isolateInputValue}
@@ -2008,6 +2921,10 @@ export default function OverlayPage() {
               handleCombineImages={handleCombineImages}
               handleDelete={handleDelete}
               handleIsolate={handleIsolate}
+              handleConvertToVideo={handleConvertToVideo}
+              handleVideoToVideo={handleVideoToVideo}
+              handleExtendVideo={handleExtendVideo}
+              handleRemoveVideoBackground={handleRemoveVideoBackground}
               setCroppingImageId={setCroppingImageId}
               setIsolateInputValue={setIsolateInputValue}
               setIsolateTarget={setIsolateTarget}
@@ -2115,7 +3032,7 @@ export default function OverlayPage() {
                     className={cn(
                       "h-8 px-3 gap-2",
                       customApiKey &&
-                        "border-green-500/50 bg-green-500/10 hover:border-green-500/70 hover:bg-green-500/20",
+                        "border-green-500/50 bg-green-500/10 hover:border-green-500/70 hover:bg-green-500/20"
                     )}
                     title={
                       customApiKey
@@ -2126,13 +3043,13 @@ export default function OverlayPage() {
                     <Key
                       className={cn(
                         "h-4 w-4",
-                        customApiKey && "text-green-500",
+                        customApiKey && "text-green-500"
                       )}
                     />
                     <span
                       className={cn(
                         "text-sm",
-                        customApiKey && "text-green-500",
+                        customApiKey && "text-green-500"
                       )}
                     >
                       {customApiKey ? "Custom Key" : "API Key"}
@@ -2161,7 +3078,7 @@ export default function OverlayPage() {
                       input.onchange = (e) => {
                         try {
                           handleFileUpload(
-                            (e.target as HTMLInputElement).files,
+                            (e.target as HTMLInputElement).files
                           );
                         } catch (error) {
                           console.error("File upload error:", error);
@@ -2195,7 +3112,7 @@ export default function OverlayPage() {
                         } catch (error) {
                           console.error(
                             "Failed to trigger file dialog:",
-                            error,
+                            error
                           );
                           toast({
                             title: "Upload unavailable",
@@ -2345,7 +3262,7 @@ export default function OverlayPage() {
                         }
                         const selectedModel =
                           styleModels.find(
-                            (m) => m.id === generationSettings.styleId,
+                            (m) => m.id === generationSettings.styleId
                           ) || styleModels.find((m) => m.id === "simpsons");
                         return (
                           <>
@@ -2402,7 +3319,7 @@ export default function OverlayPage() {
                         className: "gap-2",
                         size: "sm",
                       }),
-                      "hidden xl:flex",
+                      "hidden xl:flex"
                     )}
                     href={"https://github.com/fal-ai-community/infinite-kanvas"}
                     target="_blank"
@@ -2426,6 +3343,7 @@ export default function OverlayPage() {
           {/* Mini-map */}
           <MiniMap
             images={images}
+            videos={videos}
             viewport={viewport}
             canvasSize={canvasSize}
           />
@@ -2447,7 +3365,7 @@ export default function OverlayPage() {
           {/* Dimension display for selected images */}
           <DimensionDisplay
             selectedImages={images.filter((img) =>
-              selectedIds.includes(img.id),
+              selectedIds.includes(img.id)
             )}
             viewport={viewport}
           />
@@ -2488,7 +3406,7 @@ export default function OverlayPage() {
                     "group relative flex flex-col items-center gap-2 p-3 rounded border",
                     generationSettings.styleId === "custom"
                       ? "border-primary bg-primary/10"
-                      : "border-border hover:border-primary/50",
+                      : "border-border hover:border-primary/50"
                   )}
                 >
                   <div className="w-full aspect-square rounded-md bg-muted flex items-center justify-center">
@@ -2514,7 +3432,7 @@ export default function OverlayPage() {
                       "group relative flex flex-col items-center gap-2 p-3 rounded border",
                       generationSettings.styleId === model.id
                         ? "border-primary bg-primary/10"
-                        : "border-border hover:border-primary/50",
+                        : "border-border hover:border-primary/50"
                     )}
                   >
                     <div className="relative w-full aspect-square rounded-md overflow-hidden">
@@ -2639,6 +3557,96 @@ export default function OverlayPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Image to Video Dialog */}
+      <ImageToVideoDialog
+        isOpen={isImageToVideoDialogOpen}
+        onClose={() => {
+          setIsImageToVideoDialogOpen(false);
+          setSelectedImageForVideo(null);
+        }}
+        onConvert={handleImageToVideoConversion}
+        imageUrl={
+          selectedImageForVideo
+            ? images.find((img) => img.id === selectedImageForVideo)?.src || ""
+            : ""
+        }
+        isConverting={isConvertingToVideo}
+      />
+
+      <VideoToVideoDialog
+        isOpen={isVideoToVideoDialogOpen}
+        onClose={() => {
+          setIsVideoToVideoDialogOpen(false);
+          setSelectedVideoForVideo(null);
+        }}
+        onConvert={handleVideoToVideoTransformation}
+        videoUrl={
+          selectedVideoForVideo
+            ? videos.find((vid) => vid.id === selectedVideoForVideo)?.src || ""
+            : ""
+        }
+        isConverting={isTransformingVideo}
+      />
+
+      <ExtendVideoDialog
+        isOpen={isExtendVideoDialogOpen}
+        onClose={() => {
+          setIsExtendVideoDialogOpen(false);
+          setSelectedVideoForExtend(null);
+        }}
+        onExtend={handleVideoExtension}
+        videoUrl={
+          selectedVideoForExtend
+            ? videos.find((vid) => vid.id === selectedVideoForExtend)?.src || ""
+            : ""
+        }
+        isExtending={isExtendingVideo}
+      />
+
+      <RemoveVideoBackgroundDialog
+        isOpen={isRemoveVideoBackgroundDialogOpen}
+        onClose={() => {
+          setIsRemoveVideoBackgroundDialogOpen(false);
+          setSelectedVideoForBackgroundRemoval(null);
+        }}
+        onProcess={handleVideoBackgroundRemoval}
+        videoUrl={
+          selectedVideoForBackgroundRemoval
+            ? videos.find((vid) => vid.id === selectedVideoForBackgroundRemoval)
+                ?.src || ""
+            : ""
+        }
+        videoDuration={
+          selectedVideoForBackgroundRemoval
+            ? videos.find((vid) => vid.id === selectedVideoForBackgroundRemoval)
+                ?.duration || 0
+            : 0
+        }
+        isProcessing={isRemovingVideoBackground}
+      />
+
+      {/* Video Generation Streaming Components */}
+      {Array.from(activeVideoGenerations.entries()).map(([id, generation]) => (
+        <StreamingVideo
+          key={id}
+          videoId={id}
+          generation={generation}
+          onComplete={handleVideoGenerationComplete}
+          onError={handleVideoGenerationError}
+          onProgress={handleVideoGenerationProgress}
+          apiKey={customApiKey}
+        />
+      ))}
+
+      {/* Video Controls Overlays */}
+      <VideoOverlays
+        videos={videos}
+        selectedIds={selectedIds}
+        viewport={viewport}
+        hiddenVideoControlsIds={hiddenVideoControlsIds}
+        setVideos={setVideos}
+      />
     </div>
   );
 }
