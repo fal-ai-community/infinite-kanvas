@@ -42,17 +42,40 @@ export const VideoControls: React.FC<VideoControlsProps> = ({
 
   // Handle play/pause toggle
   const togglePlayPause = () => {
+    // Get the actual video element and control it directly
+    const videoEl = document.getElementById(
+      `video-${video.id}`,
+    ) as HTMLVideoElement;
+    if (videoEl) {
+      if (videoEl.paused) {
+        videoEl.play();
+      } else {
+        videoEl.pause();
+      }
+    }
     onChange({ isPlaying: !video.isPlaying });
   };
 
   // Handle mute toggle
   const toggleMute = () => {
+    const videoEl = document.getElementById(
+      `video-${video.id}`,
+    ) as HTMLVideoElement;
+    if (videoEl) {
+      videoEl.muted = !videoEl.muted;
+    }
     onChange({ muted: !video.muted });
   };
 
   // Handle volume change
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const volume = parseFloat(e.target.value);
+    const videoEl = document.getElementById(
+      `video-${video.id}`,
+    ) as HTMLVideoElement;
+    if (videoEl) {
+      videoEl.volume = volume;
+    }
     onChange({ volume });
   };
 
@@ -68,6 +91,15 @@ export const VideoControls: React.FC<VideoControlsProps> = ({
     );
 
     setCurrentTime(newTime);
+
+    // Directly seek the video element
+    const videoEl = document.getElementById(
+      `video-${video.id}`,
+    ) as HTMLVideoElement;
+    if (videoEl) {
+      videoEl.currentTime = newTime;
+    }
+
     onChange({ currentTime: newTime });
   };
 
@@ -91,28 +123,55 @@ export const VideoControls: React.FC<VideoControlsProps> = ({
 
   const handleSeekBarDragEnd = () => {
     setIsDraggingSeekBar(false);
+    // Directly seek the video element
+    const videoEl = document.getElementById(
+      `video-${video.id}`,
+    ) as HTMLVideoElement;
+    if (videoEl) {
+      videoEl.currentTime = currentTime;
+    }
     onChange({ currentTime });
   };
 
   // Handle skip forward/backward
   const skipForward = () => {
     const newTime = Math.min(video.currentTime + 5, video.duration);
+    // Directly seek the video element
+    const videoEl = document.getElementById(
+      `video-${video.id}`,
+    ) as HTMLVideoElement;
+    if (videoEl) {
+      videoEl.currentTime = newTime;
+    }
     onChange({ currentTime: newTime });
   };
 
   const skipBackward = () => {
     const newTime = Math.max(video.currentTime - 5, 0);
+    // Directly seek the video element
+    const videoEl = document.getElementById(
+      `video-${video.id}`,
+    ) as HTMLVideoElement;
+    if (videoEl) {
+      videoEl.currentTime = newTime;
+    }
     onChange({ currentTime: newTime });
   };
 
   // Handle loop toggle
   const toggleLoop = () => {
+    const videoEl = document.getElementById(
+      `video-${video.id}`,
+    ) as HTMLVideoElement;
+    if (videoEl) {
+      videoEl.loop = !videoEl.loop;
+    }
     onChange({ isLooping: !video.isLooping });
   };
 
   return (
     <div
-      className={`flex flex-col bg-white/90 backdrop-blur-sm rounded-md shadow-md p-1.5 z-[60] ${className}`}
+      className={`flex flex-col bg-white border rounded shadow p-1.5 z-[60] ${className}`}
       onClick={(e) => e.stopPropagation()} // Prevent clicks from bubbling to canvas
     >
       {/* Seek bar with time display */}
