@@ -23,6 +23,14 @@ export const styleModels: StyleModel[] = [
       "https://huggingface.co/Owen777/Kontext-Style-Loras/resolve/main/LEGO_lora_weights.safetensors",
   },
   {
+    id: "faceretoucher",
+    name: "Face Retoucher",
+    imageSrc: "/images/styles/faceretoucher.jpg",
+    prompt: "Retouch face remove acne",
+    loraUrl:
+      "https://storage.googleapis.com/falserverless/kontext-blog/retouch-v1.safetensors",
+  },
+  {
     id: "3d",
     name: "3D Game Asset",
     imageSrc: "/images/styles/3d.jpg",
