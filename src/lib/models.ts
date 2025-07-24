@@ -26,7 +26,7 @@ export const styleModels: StyleModel[] = [
     id: "faceretoucher",
     name: "Face Retoucher",
     imageSrc: "/images/styles/faceretoucher.jpg",
-    prompt: "Retouch face remove acne",
+    prompt: "Touchup photo. Remove blemishes and improve skin.",
     loraUrl:
       "https://storage.googleapis.com/falserverless/kontext-blog/retouch-v1.safetensors",
   },
