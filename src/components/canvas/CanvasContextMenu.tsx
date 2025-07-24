@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { SpinnerIcon } from "@/components/icons";
 import { checkOS } from "@/utils/os-utils";
+import { exportVideoAsGif } from "@/utils/gif-export";
 import type {
   PlacedImage,
   PlacedVideo,
@@ -364,6 +365,25 @@ export const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
           </ContextMenuItem>
         </ContextMenuSubContent>
       </ContextMenuSub>
+      {selectedIds.length === 1 &&
+        videos?.some((v) => v.id === selectedIds[0]) && (
+          <ContextMenuItem
+            onClick={async () => {
+              const video = videos.find((v) => v.id === selectedIds[0]);
+              if (video) {
+                try {
+                  await exportVideoAsGif(video.src);
+                } catch (error) {
+                  console.error("Failed to export GIF:", error);
+                }
+              }
+            }}
+            className="flex items-center gap-2"
+          >
+            <Video className="h-4 w-4" />
+            Export GIF
+          </ContextMenuItem>
+        )}
       <ContextMenuItem
         onClick={async () => {
           for (const id of selectedIds) {
