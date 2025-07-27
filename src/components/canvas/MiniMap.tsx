@@ -1,5 +1,6 @@
 import React from "react";
 import type { PlacedImage, PlacedVideo } from "@/types/canvas";
+import { cn } from "@/lib/utils";
 
 interface MiniMapProps {
   images: PlacedImage[];
@@ -71,8 +72,14 @@ export const MiniMap: React.FC<MiniMapProps> = ({
   const offsetY = (miniMapHeight - contentHeight * scale) / 2;
 
   return (
-    <div className="absolute top-4 right-2 md:right-4 z-20 bg-background/95 border rounded shadow-sm p-1 md:p-2">
-      <div className="relative w-32 h-24 md:w-48 md:h-32 bg-muted rounded overflow-hidden">
+    <div
+      className={cn(
+        "absolute top-4 right-2 md:right-4 z-20 bg-background/95 rounded-2xl p-1 md:p-2 backdrop-blur",
+        "shadow-[0_0_0_1px_rgba(50,50,50,0.16),0_4px_8px_-0.5px_rgba(50,50,50,0.08),0_8px_16px_-2px_rgba(50,50,50,0.04)]",
+        "dark:shadow-none dark:border dark:border-border",
+      )}
+    >
+      <div className="relative w-32 h-24 md:w-48 md:h-32 bg-muted rounded-xl overflow-hidden">
         {/* Render tiny versions of images */}
         {images.map((img) => (
           <div

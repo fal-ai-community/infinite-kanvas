@@ -6,8 +6,8 @@ import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
   [
-    "inline-flex items-center justify-center whitespace-nowrap rounded",
-    "border border-stroke-lighter outline-none",
+    "inline-flex items-center justify-center whitespace-nowrap rounded-xl",
+    "outline-none",
     "font-heading font-medium transition-all",
     "disabled:pointer-events-none disabled:opacity-50",
     // Svg icons style
@@ -23,12 +23,14 @@ const buttonVariants = cva(
           "[&>svg]:text-content-lighter",
         ],
         primary: [
-          "bg-primary text-primary-foreground hover:bg-primary-dark border-primary-dark",
+          "bg-primary text-primary-foreground hover:bg-primary-dark",
           "[&>svg]:text-primary-300",
         ],
         secondary: [
-          "bg-background text-secondary-foreground hover:bg-secondary/80",
-          "border-border",
+          "bg-secondary/40 text-secondary-foreground hover:bg-secondary/80",
+        ],
+        ghost: [
+          "bg-transparent text-secondary-foreground hover:bg-secondary/40",
         ],
         link: "text-primary underline-offset-4 hover:underline",
       },
@@ -38,7 +40,7 @@ const buttonVariants = cva(
         lg: "h-11 px-6",
         xl: "h-12 px-7 py-2 text-lg",
         xs: "h-8 px-2.5 text-sm [&>svg]:h-4 [&>svg]:w-4",
-        icon: "h-10 w-10 [&>svg]:w-5 [&>svg]:h-5 [&>svg]:stroke-current",
+        icon: "h-10 w-10 [&>svg]:w-5 [&>svg]:h-5 [&>svg]:stroke-current disabled:opacity-100",
         "icon-sm": "h-9 w-9 [&>svg]:w-4 [&>svg]:h-4 [&>svg]:text-current",
         "icon-xs": "h-8 w-8 [&>svg]:w-3 [&>svg]:h-3 [&>svg]:text-current",
       },

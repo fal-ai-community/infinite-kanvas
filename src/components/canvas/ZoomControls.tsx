@@ -1,8 +1,7 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { ZoomIn, ZoomOut, Maximize2 } from "lucide-react";
-import Link from "next/link";
-import { LogoIcon } from "@/components/icons/logo";
+import { cn } from "@/lib/utils";
 
 interface ZoomControlsProps {
   viewport: {
@@ -63,45 +62,50 @@ export const ZoomControls: React.FC<ZoomControlsProps> = ({
   };
 
   return (
-    <div className="absolute bottom-4 right-4 flex-col hidden md:flex items-end gap-2 z-20">
-      <Button
-        variant="secondary"
-        size="sm"
-        onClick={handleZoomIn}
-        className="w-10 h-10 p-0"
+    <div className="absolute bottom-4 left-4 flex-col hidden md:flex items-start gap-4 z-20">
+      <div
+        className={cn(
+          "flex flex-col bg-card rounded-xl overflow-clip",
+          "shadow-[0_0_0_1px_rgba(50,50,50,0.16),0_4px_8px_-0.5px_rgba(50,50,50,0.08),0_8px_16px_-2px_rgba(50,50,50,0.04)]",
+          "dark:shadow-none dark:border dark:border-border",
+        )}
       >
-        <ZoomIn className="h-4 w-4" />
-      </Button>
-      <Button
-        variant="secondary"
-        size="sm"
-        onClick={handleZoomOut}
-        className="w-10 h-10 p-0"
-      >
-        <ZoomOut className="h-4 w-4" />
-      </Button>
-      <Button
-        variant="secondary"
-        size="sm"
-        onClick={handleResetView}
-        className="w-10 h-10 p-0"
-        title="Reset view"
-      >
-        <Maximize2 className="h-4 w-4" />
-      </Button>
-      <div className="border text-xs text-muted-foreground text-center bg-background/80 px-2 py-1 rounded">
-        {Math.round(viewport.scale * 100)}%
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleZoomIn}
+          className="w-10 h-10 p-0 rounded-none"
+        >
+          <ZoomIn className="h-4 w-4" />
+        </Button>
+        <div className="h-px bg-border/40 mx-2" />
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleZoomOut}
+          className="w-10 h-10 p-0 rounded-none"
+        >
+          <ZoomOut className="h-4 w-4" />
+        </Button>
+        <div className="h-px bg-border/40 mx-2" />
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleResetView}
+          className="w-10 h-10 p-0 rounded-none"
+          title="Reset view"
+        >
+          <Maximize2 className="h-4 w-4" />
+        </Button>
       </div>
-      <div className="border bg-background/80 p-2 flex flex-row rounded gap-2 items-center">
-        <Link href="https://fal.ai" target="_blank">
-          <LogoIcon className="w-10 h-10" />
-        </Link>
-        <div className="text-center text-xs">
-          Powered by <br />
-          <Link href="https://fal.ai" target="_blank">
-            <span className="font-bold text-xl">Fal</span>
-          </Link>
-        </div>
+      <div
+        className={cn(
+          "text-xs text-muted-foreground text-center bg-card px-2 py-2 rounded-lg",
+          "shadow-[0_0_0_1px_rgba(50,50,50,0.16),0_4px_8px_-0.5px_rgba(50,50,50,0.08),0_8px_16px_-2px_rgba(50,50,50,0.04)]",
+          "dark:shadow-none dark:border dark:border-border",
+        )}
+      >
+        {Math.round(viewport.scale * 100)}%
       </div>
     </div>
   );

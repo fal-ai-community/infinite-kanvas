@@ -13,6 +13,7 @@ import superjson from "superjson";
 import { makeQueryClient } from "@/lib/query-client";
 import { AppRouter } from "@/server/trpc/routers/_app";
 import { Toaster } from "@/components/ui/toaster";
+import { ThemeProvider } from "next-themes";
 
 let browserQueryClient: QueryClient | undefined = undefined;
 
@@ -54,8 +55,15 @@ export function CoreProviders({ children }: { children: ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
       <TRPCProvider trpcClient={trpcClient} queryClient={queryClient}>
-        {children}
-        <Toaster />
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          {children}
+          <Toaster />
+        </ThemeProvider>
       </TRPCProvider>
     </QueryClientProvider>
   );
