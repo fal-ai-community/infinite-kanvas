@@ -3002,7 +3002,7 @@ export default function OverlayPage() {
               <Link
                 href="https://fal.ai"
                 target="_blank"
-                className="block hover:opacity-80 transition-opacity"
+                className="block transition-opacity"
               >
                 <Logo className="h-8 w-16 text-foreground" />
               </Link>
