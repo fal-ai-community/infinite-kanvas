@@ -3138,9 +3138,13 @@ export default function OverlayPage() {
                           <Button
                             variant="secondary"
                             size="icon-sm"
+                            className="relative"
                             onClick={() => setIsSettingsDialogOpen(true)}
                           >
                             <SlidersHorizontal className="h-4 w-4" />
+                            {customApiKey && (
+                              <div className="absolute size-2.5 -top-0.5 -right-0.5 bg-blue-500 rounded-full" />
+                            )}
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent>
