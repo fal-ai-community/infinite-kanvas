@@ -113,6 +113,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { GithubBadge } from "@/components/canvas/GithubBadge";
+import { GenerationsIndicator } from "@/components/generations-indicator";
 
 export default function OverlayPage() {
   const { theme, setTheme } = useTheme();
@@ -3037,12 +3038,13 @@ export default function OverlayPage() {
               <div className="flex flex-col gap-3 px-3 md:px-3 py-2 md:py-3 relative">
                 {/* Active generations indicator */}
                 {activeGenerations.size > 0 && (
-                  <div className="absolute -top-12 left-1/2 transform -translate-x-1/2 bg-yellow-500/10 border border-yellow-500/20 text-yellow-500 px-3 py-1 rounded text-sm font-medium flex items-center gap-2 ">
-                    <div className="w-2 h-2 bg-yellow-500 rounded-full animate-ping" />
-                    <span>
-                      Generating {activeGenerations.size} image
-                      {activeGenerations.size > 1 ? "s" : ""}
-                    </span>
+                  <div className="absolute z-50 -top-16 left-1/2 transform -translate-x-1/2 bg-background/90 backdrop-blur-sm rounded-xl">
+                    <GenerationsIndicator
+                      isAnimating={activeGenerations.size > 0}
+                      speed={120}
+                      className="w-5 h-5"
+                      activeGenerationsSize={activeGenerations.size}
+                    />
                   </div>
                 )}
 
@@ -3194,7 +3196,7 @@ export default function OverlayPage() {
                           return (
                             <div
                               key={id}
-                              className="absolute rounded border bg-background overflow-hidden"
+                              className="absolute rounded-lg border border-border/20 bg-background overflow-hidden"
                               style={{
                                 right: `${offset}px`,
                                 top: `${topOffset}px`,
