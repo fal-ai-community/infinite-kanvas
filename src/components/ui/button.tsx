@@ -23,7 +23,7 @@ const buttonVariants = cva(
           "[&>svg]:text-content-lighter",
         ],
         primary: [
-          "bg-primary text-primary-foreground hover:bg-primary-dark",
+          "bg-primary text-primary-foreground hover:bg-primary/80",
           "[&>svg]:text-primary-300",
         ],
         secondary: [
@@ -40,7 +40,7 @@ const buttonVariants = cva(
         lg: "h-11 px-6",
         xl: "h-12 px-7 py-2 text-lg",
         xs: "h-8 px-2.5 text-sm [&>svg]:h-4 [&>svg]:w-4",
-        icon: "h-10 w-10 [&>svg]:w-5 [&>svg]:h-5 [&>svg]:stroke-current disabled:opacity-100",
+        icon: "h-10 w-10 [&>svg]:w-5 [&>svg]:h-5 [&>svg]:stroke-current",
         "icon-sm": "h-9 w-9 [&>svg]:w-4 [&>svg]:h-4 [&>svg]:text-current",
         "icon-xs": "h-8 w-8 [&>svg]:w-3 [&>svg]:h-3 [&>svg]:text-current",
       },
