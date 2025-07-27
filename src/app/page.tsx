@@ -3572,7 +3572,7 @@ export default function OverlayPage() {
         open={isSettingsDialogOpen}
         onOpenChange={setIsSettingsDialogOpen}
       >
-        <DialogContent className="w-[95vw] max-w-2xl max-h-[80vh] overflow-hidden">
+        <DialogContent className="w-[95vw] max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Settings</DialogTitle>
           </DialogHeader>
