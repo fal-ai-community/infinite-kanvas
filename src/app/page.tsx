@@ -3041,7 +3041,6 @@ export default function OverlayPage() {
                   <div className="absolute z-50 -top-16 left-1/2 transform -translate-x-1/2 bg-background/90 backdrop-blur-sm rounded-xl">
                     <GenerationsIndicator
                       isAnimating={activeGenerations.size > 0}
-                      speed={120}
                       className="w-5 h-5"
                       activeGenerationsSize={activeGenerations.size}
                     />
