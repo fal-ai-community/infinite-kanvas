@@ -6,8 +6,8 @@ import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
   [
-    "inline-flex items-center justify-center whitespace-nowrap rounded",
-    "border border-stroke-lighter outline-none",
+    "inline-flex items-center justify-center whitespace-nowrap rounded-xl",
+    "outline-none",
     "font-heading font-medium transition-all",
     "disabled:pointer-events-none disabled:opacity-50",
     // Svg icons style
@@ -23,12 +23,14 @@ const buttonVariants = cva(
           "[&>svg]:text-content-lighter",
         ],
         primary: [
-          "bg-primary text-primary-foreground hover:bg-primary-dark border-primary-dark",
+          "bg-primary text-primary-foreground hover:bg-primary/80",
           "[&>svg]:text-primary-300",
         ],
         secondary: [
-          "bg-background text-secondary-foreground hover:bg-secondary/80",
-          "border-border",
+          "bg-secondary/40 text-secondary-foreground hover:bg-secondary/80",
+        ],
+        ghost: [
+          "bg-transparent text-secondary-foreground hover:bg-secondary/40",
         ],
         link: "text-primary underline-offset-4 hover:underline",
       },
