@@ -1,11 +1,8 @@
 import { useEffect, useRef, useCallback, useState } from "react";
 import { useSetAtom, useAtomValue, atom } from "jotai";
-import {
-  PartyKitSyncAdapter,
-  NoOpSyncAdapter,
-} from "@/lib/multiplayer/adapter";
+import { PartyKitConnection } from "@/lib/multiplayer/adapter";
 import type { PlacedImage } from "@/types/canvas";
-import type { ViewportState, SyncAdapter } from "@/types/multiplayer";
+import type { ViewportState } from "@/types/multiplayer";
 import {
   syncAdapterAtom,
   roomIdAtom,
@@ -58,12 +55,12 @@ export function useMultiplayer(roomId?: string) {
   const connectionState = useAtomValue(connectionStateAtom);
 
   // Core atoms
-  const setSyncAdapterAtom = useSetAtom(syncAdapterAtom);
-  const setSyncAdapter = (adapter: SyncAdapter | null) => {
-    setSyncAdapterAtom(adapter);
+  const setConnectionAtom = useSetAtom(syncAdapterAtom);
+  const setConnection = (connection: PartyKitConnection | null) => {
+    setConnectionAtom(connection);
   };
   const setRoomId = useSetAtom(roomIdAtom);
-  const syncAdapter = useAtomValue(syncAdapterAtom);
+  const connection = useAtomValue(syncAdapterAtom) as PartyKitConnection | null;
   const storedRoomId = useAtomValue(roomIdAtom);
   const presenceMap = useAtomValue(presenceMapAtom);
   const images = useAtomValue(imagesAtom);
@@ -86,7 +83,7 @@ export function useMultiplayer(roomId?: string) {
   const setFollowingUserId = useSetAtom(followingUserIdAtom);
 
   // Refs for cleanup and throttling
-  const adapterRef = useRef<PartyKitSyncAdapter | null>(null);
+  const connectionRef = useRef<PartyKitConnection | null>(null);
   const mountedRef = useRef(true);
   const reconnectAttemptsRef = useRef(0);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
@@ -109,9 +106,9 @@ export function useMultiplayer(roomId?: string) {
 
     // Use a setup flag to prevent double connections
     const setupConnection = () => {
-      if (cleanupExecuted || adapterRef.current) return;
+      if (cleanupExecuted || connectionRef.current) return;
 
-      const adapter = new PartyKitSyncAdapter({
+      const partyConnection = new PartyKitConnection({
         roomId,
         falClient,
         toast,
@@ -139,11 +136,11 @@ export function useMultiplayer(roomId?: string) {
         },
       });
 
-      adapterRef.current = adapter;
-      setSyncAdapter(adapter);
-      // Sync adapter created and stored
+      connectionRef.current = partyConnection;
+      setConnection(partyConnection);
+      // Connection created and stored
 
-      unsubscribe = adapter.subscribe({
+      unsubscribe = partyConnection.subscribe({
         onFullSync: (state) => {
           console.log("Full sync received:", state);
           setImages(state.images);
@@ -177,7 +174,8 @@ export function useMultiplayer(roomId?: string) {
             });
           } else {
             // Check if this is our own connection
-            const isCurrentUser = data.userId === adapter.getConnectionId();
+            const isCurrentUser =
+              data.userId === partyConnection.getConnectionId();
 
             // Skip if we already have this user and it's a join event (not move)
             const existingUser = presenceMap.get(data.userId);
@@ -292,12 +290,12 @@ export function useMultiplayer(roomId?: string) {
         unsubscribe();
       }
 
-      if (adapterRef.current) {
-        adapterRef.current = null;
+      if (connectionRef.current) {
+        connectionRef.current = null;
       }
 
       clearPresence();
-      setSyncAdapter(null);
+      setConnection(null);
       setRoomId(undefined);
       setConnectionState("disconnected");
     };
@@ -319,11 +317,11 @@ export function useMultiplayer(roomId?: string) {
       updateImage({ id, updates });
 
       // Sync
-      if (syncAdapter) {
+      if (connection) {
         const updatedImage = images.find((img) => img.id === id);
         if (updatedImage) {
           try {
-            await syncAdapter.onImageUpdate({ ...updatedImage, ...updates });
+            await connection.onImageUpdate({ ...updatedImage, ...updates });
           } catch (error) {
             console.error("Failed to sync image update:", error);
             // Revert on failure
@@ -332,7 +330,7 @@ export function useMultiplayer(roomId?: string) {
         }
       }
     },
-    [images, updateImage, syncAdapter],
+    [images, updateImage, connection],
   );
 
   const handleImageAdd = useCallback(
@@ -341,9 +339,9 @@ export function useMultiplayer(roomId?: string) {
       addImage(image);
 
       // Sync if multiplayer
-      if (syncAdapter) {
+      if (connection) {
         try {
-          await syncAdapter.onImageAdd(image);
+          await connection.onImageAdd(image);
         } catch (error) {
           console.error("Failed to sync image addition:", error);
           // Remove on failure
@@ -351,7 +349,7 @@ export function useMultiplayer(roomId?: string) {
         }
       }
     },
-    [addImage, removeImage, syncAdapter],
+    [addImage, removeImage, connection],
   );
 
   const handleImageRemove = useCallback(
@@ -363,21 +361,21 @@ export function useMultiplayer(roomId?: string) {
       removeImage(imageId);
 
       // Sync if multiplayer
-      if (syncAdapter) {
-        syncAdapter.onImageRemove(imageId);
+      if (connection) {
+        connection.onImageRemove(imageId);
       }
     },
-    [images, removeImage, syncAdapter],
+    [images, removeImage, connection],
   );
 
   // Store current values in refs to avoid closure issues
-  const syncAdapterRef = useRef<SyncAdapter | null>(null);
+  const connectionRefForThrottle = useRef<PartyKitConnection | null>(null);
   const connectionStateRef = useRef(connectionState);
 
   // Update refs when values change
   useEffect(() => {
-    syncAdapterRef.current = syncAdapter;
-  }, [syncAdapter]);
+    connectionRefForThrottle.current = connection;
+  }, [connection]);
 
   useEffect(() => {
     connectionStateRef.current = connectionState;
@@ -387,10 +385,10 @@ export function useMultiplayer(roomId?: string) {
   const handleCursorMove = useRef(
     throttle((position: { x: number; y: number }) => {
       if (
-        syncAdapterRef.current &&
+        connectionRefForThrottle.current &&
         connectionStateRef.current === "connected"
       ) {
-        syncAdapterRef.current.onCursorMove(position);
+        connectionRefForThrottle.current.onCursorMove(position);
       }
     }, CURSOR_THROTTLE_MS), // ~60fps
   ).current;
@@ -399,10 +397,10 @@ export function useMultiplayer(roomId?: string) {
   const handleViewportChange = useRef(
     debounce((viewport: ViewportState) => {
       if (
-        syncAdapterRef.current &&
+        connectionRefForThrottle.current &&
         connectionStateRef.current === "connected"
       ) {
-        syncAdapterRef.current.onViewportChange(viewport);
+        connectionRefForThrottle.current.onViewportChange(viewport);
       }
     }, VIEWPORT_DEBOUNCE_MS),
   ).current;
@@ -410,20 +408,20 @@ export function useMultiplayer(roomId?: string) {
   // Generation event handlers
   const handleGenerationStart = useCallback(
     (imageId: string) => {
-      if (syncAdapter) {
-        syncAdapter.onGenerationStart(imageId);
+      if (connection) {
+        connection.onGenerationStart(imageId);
       }
     },
-    [syncAdapter],
+    [connection],
   );
 
   const handleGenerationComplete = useCallback(
     (imageId: string) => {
-      if (syncAdapter) {
-        syncAdapter.onGenerationComplete(imageId);
+      if (connection) {
+        connection.onGenerationComplete(imageId);
       }
     },
-    [syncAdapter],
+    [connection],
   );
 
   // Follow user functionality
@@ -443,11 +441,11 @@ export function useMultiplayer(roomId?: string) {
   // Chat functionality
   const sendChatMessage = useCallback(
     (text: string) => {
-      if (syncAdapter && connectionState === "connected") {
-        syncAdapter.sendChatMessage?.(text);
+      if (connection && connectionState === "connected") {
+        connection.sendChatMessage?.(text);
       }
     },
-    [syncAdapter, connectionState],
+    [connection, connectionState],
   );
 
   return {
@@ -475,7 +473,7 @@ export function useMultiplayer(roomId?: string) {
     handleGenerationStart,
     handleGenerationComplete,
 
-    // Direct adapter access for advanced operations
-    syncAdapter,
+    // Direct connection access for advanced operations
+    syncAdapter: connection,
   };
 }

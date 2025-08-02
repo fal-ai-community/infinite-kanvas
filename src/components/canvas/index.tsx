@@ -94,10 +94,10 @@ import { ConnectionStatus } from "@/components/canvas/multiplayer/ConnectionStat
 import { useMultiplayer } from "@/hooks/use-multiplayer";
 
 interface CanvasProps {
-  roomId?: string;
+  roomId: string;
 }
 
-export default function OverlayPage({ roomId: propRoomId }: CanvasProps = {}) {
+export default function OverlayPage({ roomId: propRoomId }: CanvasProps) {
   const [images, setImages] = useState<PlacedImage[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isStorageLoaded, setIsStorageLoaded] = useState(false);

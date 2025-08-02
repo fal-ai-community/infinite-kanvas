@@ -40,24 +40,3 @@ export interface SyncHandlers {
   onChatHistory?: (messages: ChatMessage[]) => void;
   onChatMessage?: (message: ChatMessage) => void;
 }
-
-export interface SyncAdapter {
-  // Called for every state mutation
-  onImageUpdate(image: PlacedImage): Promise<void>;
-  onImageAdd(image: PlacedImage): Promise<void>;
-  onImageRemove(imageId: string): void;
-  onViewportChange(viewport: ViewportState): void;
-  onCursorMove(position: { x: number; y: number }): void;
-  onGenerationStart(imageId: string): void;
-  onGenerationComplete(imageId: string): void;
-
-  // Chat functionality
-  sendChatMessage?(text: string): void;
-
-  // Subscribe to remote changes
-  subscribe(handlers: SyncHandlers): () => void;
-
-  // Connection state
-  isConnected(): boolean;
-  getConnectionId(): string | null;
-}

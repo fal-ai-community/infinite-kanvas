@@ -5,13 +5,9 @@ import { uploadImageDirect } from "@/lib/handlers/generation-handler";
 import type { PlacedImage } from "@/types/canvas";
 import { PARTYKIT_HOST } from "@/lib/constants";
 
-import type {
-  SyncAdapter,
-  SyncHandlers,
-  ViewportState,
-} from "@/types/multiplayer";
+import type { SyncHandlers, ViewportState } from "@/types/multiplayer";
 
-interface PartyKitAdapterOptions {
+interface PartyKitConnectionOptions {
   falClient: FalClient;
   roomId: string;
   setIsApiKeyDialogOpen: React.Dispatch<React.SetStateAction<boolean>>;
@@ -25,56 +21,7 @@ interface PartyKitAdapterOptions {
   ) => void;
 }
 
-// No-op implementation for single-player mode
-class NoOpSyncAdapter implements SyncAdapter {
-  async onImageUpdate(_image: PlacedImage): Promise<void> {
-    // No-op
-  }
-
-  async onImageAdd(_image: PlacedImage): Promise<void> {
-    // No-op
-  }
-
-  onImageRemove(_imageId: string): void {
-    // No-op
-  }
-
-  onViewportChange(_viewport: ViewportState): void {
-    // No-op
-  }
-
-  onCursorMove(_position: { x: number; y: number }): void {
-    // No-op
-  }
-
-  onGenerationStart(_imageId: string): void {
-    // No-op
-  }
-
-  onGenerationComplete(_imageId: string): void {
-    // No-op
-  }
-
-  sendChatMessage(_text: string): void {
-    // No-op
-  }
-
-  subscribe(_handlers: SyncHandlers): () => void {
-    // Return empty cleanup function
-    return () => {};
-  }
-
-  isConnected(): boolean {
-    return false;
-  }
-
-  getConnectionId(): string | null {
-    return null;
-  }
-}
-
-// PartyKit implementation for multiplayer mode
-class PartyKitSyncAdapter implements SyncAdapter {
+export class PartyKitConnection {
   private socket: PartySocket;
   private handlers: SyncHandlers = {};
   private pendingOperations = new Map<string, any>();
@@ -83,7 +30,7 @@ class PartyKitSyncAdapter implements SyncAdapter {
   private userName: string;
   private userColor: string | null = null;
 
-  constructor(private options: PartyKitAdapterOptions) {
+  constructor(private options: PartyKitConnectionOptions) {
     const host = PARTYKIT_HOST;
 
     // Get username from localStorage
@@ -336,16 +283,3 @@ class PartyKitSyncAdapter implements SyncAdapter {
     );
   }
 }
-
-// Factory function to create the appropriate adapter
-export function createSyncAdapter(
-  options?: PartyKitAdapterOptions,
-): SyncAdapter {
-  if (options) {
-    return new PartyKitSyncAdapter(options);
-  }
-  return new NoOpSyncAdapter();
-}
-
-// Export the adapters for backwards compatibility
-export { NoOpSyncAdapter, PartyKitSyncAdapter };

@@ -3,7 +3,6 @@ import type { PlacedImage } from "@/types/canvas";
 import type {
   ViewportState,
   PresenceData,
-  SyncAdapter,
   ChatMessage,
 } from "@/types/multiplayer";
 
@@ -12,9 +11,12 @@ export const imagesAtom = atom<PlacedImage[]>([]);
 export const viewportAtom = atom<ViewportState>({ x: 0, y: 0, scale: 1 });
 export const presenceMapAtom = atom<Map<string, PresenceData>>(new Map());
 
-// Sync adapter and room atoms
-export const syncAdapterAtom = atom<SyncAdapter | null>(null);
+// Connection and room atoms
+export const connectionAtom = atom<any | null>(null); // PartyKitConnection instance
 export const roomIdAtom = atom<string | undefined>(undefined);
+
+// Keep syncAdapterAtom as alias for backwards compatibility
+export const syncAdapterAtom = connectionAtom;
 
 // Chat atoms
 export const chatMessagesAtom = atom<ChatMessage[]>([]);
