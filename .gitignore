@@ -3,3 +3,13 @@
 node_modules
 .next
 .vercel
+.partykit/
+tsconfig.tsbuildinfo
+
+# generated service worker
+public/sw.js
+
+# package manager files (only use npm)
+bun.lock
+yarn.lock
+pnpm-lock.yaml

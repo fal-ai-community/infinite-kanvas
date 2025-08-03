@@ -6,14 +6,14 @@ An infinite canvas image editor with AI transformations using fal.ai. Built with
 
 ## Features
 
-- Infinite canvas with pan/zoom
-- Drag & drop image upload
-- AI style transfer via Flux Kontext LoRA
-- Background removal and object isolation
-- Real-time streaming of AI results
-- Multi-selection and image manipulation
-- Auto-save to IndexedDB
-- Undo/redo support
+- **Infinite Canvas**: Pan/zoom with viewport culling for performance
+- **AI Transformations**: Style transfer, background removal, object isolation via fal.ai
+- **Multiplayer**: Real-time collaborative editing with PartyKit
+- **Authentication**: Clerk integration with secure user management
+- **Persistence**: Cloudflare D1 database, R2 storage, and KV cache
+- **Real-time Streaming**: Live AI generation updates with progress indicators
+- **Drag & Drop**: Seamless image upload and manipulation
+- **Auto-save**: Persistent canvas state with history
 
 ## Technical Details
 
@@ -72,21 +72,28 @@ The client receives these updates via a tRPC subscription and updates the canvas
 
 ### State Management
 
-The application uses a combination of React state and IndexedDB for persistence:
+The application uses a multi-layered state management approach:
 
-- **Canvas State**: Images, positions, and transformations stored in React state
-- **History**: Undo/redo stack maintained in memory
-- **Persistence**: Auto-saves to IndexedDB with debouncing
-- **Image Storage**: Original image data stored separately in IndexedDB to handle large files
+- **Local State**: React hooks for component state
+- **Global State**: Jotai atoms for cross-component state sharing
+- **Canvas State**: Images, positions, and transformations
+- **Multiplayer State**: PartyKit synchronization for real-time collaboration
+- **Persistence**: Cloudflare D1 for cloud storage + IndexedDB fallback
+- **Cache Layer**: Cloudflare KV for performance optimization
+- **Image Storage**: fal.ai storage + Cloudflare R2 for large files
 
 ### API Architecture
 
-Built with tRPC for type-safe API calls:
+Built with tRPC for type-safe API calls with Cloudflare integration:
 
 - `removeBackground`: Uses fal.ai's Bria background removal model
 - `isolateObject`: Leverages EVF-SAM for semantic object segmentation
 - `generateTextToImage`: Text-to-image generation with Flux
 - `generateImageStream`: Streaming image-to-image transformations
+- `multiplayer`: Real-time WebSocket connections via PartyKit
+- `auth`: Clerk authentication middleware
+- `storage`: Cloudflare R2, D1, and KV integrations
+- `rateLimiting`: Tiered rate limiting with Cloudflare KV
 
 ## How AI Features Work
 
@@ -129,19 +136,35 @@ Uses Bria's specialized background removal model:
 ### Setup
 
 1. Clone the repository
-2. Install dependencies: `npm install`
-3. Add your fal.ai API key to `.env.local`:
+2. Install dependencies: `npm install` (or `pnpm install`)
+3. Configure environment variables:
 
    ```
-   FAL_KEY=your_fal_api_key_here
-   NEXT_PUBLIC_APP_URL=http://localhost:3000
+   # .env.local
 
-   # Optional
+   # fal.ai API
+   FAL_KEY=your_fal_api_key_here
+
+   # Clerk Authentication
+   NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
+   CLERK_SECRET_KEY=
+
+   # Cloudflare (for production)
+   CLOUDFLARE_ACCOUNT_ID=
+   CLOUDFLARE_API_TOKEN=
+
+   # URLs
+   NEXT_PUBLIC_APP_URL=http://localhost:3000
+   NEXT_PUBLIC_PARTYKIT_HOST=localhost:1999
+
+   # Optional Cloudflare Services
    KV_REST_API_URL=
    KV_REST_API_TOKEN=
    ```
 
 4. Run development server: `npm run dev`
+   - Next.js runs on http://localhost:3000
+   - PartyKit runs on http://localhost:1999
 
 ### Pre-commit Hooks
 
@@ -163,13 +186,18 @@ npx lint-staged
 
 ### Tech Stack
 
-- **Next.js 15**: React framework with App Router
-- **React Konva**: Canvas rendering engine
-- **tRPC**: Type-safe API layer
-- **fal.ai SDK**: AI model integration
-- **Tailwind CSS**: Styling
-- **IndexedDB**: Client-side storage
-- **Sharp**: Server-side image processing
+- **Frontend**: Next.js 15, React 19, TypeScript
+- **Canvas**: React Konva for 2D canvas rendering
+- **Real-time**: PartyKit for WebSocket connections
+- **API**: tRPC for type-safe endpoints
+- **Authentication**: Clerk with Clerk Elements
+- **Database**: Drizzle ORM + Cloudflare D1
+- **Storage**: Cloudflare R2 (images) + KV (cache)
+- **AI**: fal.ai SDK for model integration
+- **State**: Jotai atoms + React Query
+- **Styling**: Tailwind CSS + Radix UI
+- **Processing**: Sharp + IndexedDB
+- **PWA**: Service Worker with offline support
 
 ## Deployment
 

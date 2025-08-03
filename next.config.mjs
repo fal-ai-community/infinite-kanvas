@@ -1,5 +1,13 @@
 /** @type {import('next').NextConfig} */
 import { withBotId } from "botid/next/config";
+import withSerwistInit from "@serwist/next";
+
+const withSerwist = withSerwistInit({
+  swSrc: "src/app/sw.ts",
+  swDest: "public/sw.js",
+  reloadOnOnline: true,
+  disable: process.env.NODE_ENV === "development",
+});
 
 const nextConfig = {
   devIndicators: false,
@@ -25,4 +33,4 @@ const nextConfig = {
   },
 };
 
-export default withBotId(nextConfig);
+export default withBotId(withSerwist(nextConfig));

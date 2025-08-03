@@ -1,0 +1,22 @@
+name = "infinite-kanvas-dev"
+compatibility_date = "2024-12-01"
+
+# R2 bucket binding
+[[r2_buckets]]
+binding = "KANVAS_IMAGES"
+bucket_name = "kanvas-images"
+
+# D1 database binding
+[[d1_databases]]
+binding = "KANVAS_DB"
+database_name = "kanvas-db"
+database_id = "77bedc55-0190-40f9-ba57-a5fbb84d3dfd"
+
+# KV namespace binding
+[[kv_namespaces]]
+binding = "KANVAS_CACHE"
+id = "ee2d9571c831496e912c66126eb38782"
+
+# Environment variables for local development
+[vars]
+ENVIRONMENT = "development"

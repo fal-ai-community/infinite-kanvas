@@ -3,6 +3,7 @@ import { rateLimitedProcedure, publicProcedure, router } from "../init";
 import { tracked } from "@trpc/server";
 import { createFalClient } from "@fal-ai/client";
 import sharp from "sharp";
+import { canvasRouter } from "./canvas";
 
 const fal = createFalClient({
   credentials: () => process.env.FAL_KEY as string,
@@ -69,6 +70,7 @@ async function downloadImage(url: string): Promise<Buffer> {
 import { getVideoModelById, VIDEO_MODELS } from "@/lib/video-models";
 
 export const appRouter = router({
+  canvas: canvasRouter,
   transformVideo: publicProcedure
     .input(
       z.object({
@@ -789,7 +791,9 @@ export const appRouter = router({
         // Upload the segmented image to FAL storage
         console.log("Uploading segmented image to storage...");
         const uploadResult = await falClient.storage.upload(
-          new Blob([segmentedImage], { type: "image/png" }),
+          new Blob([segmentedImage as unknown as BlobPart], {
+            type: "image/png",
+          }),
         );
 
         // Return the URL of the segmented object

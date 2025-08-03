@@ -1,9 +1,19 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { CoreProviders } from "./core-providers";
 import { focal, hal, halMono, commitMono, inconsolata } from "@/lib/fonts";
 import { BotIdClient } from "botid/client";
 import { Analytics } from "@vercel/analytics/next";
+import { ClerkProvider } from "@clerk/nextjs";
+import { ServiceWorkerRegistration } from "@/components/pwa/ServiceWorkerRegistration";
+import { ThemeProvider } from "@/providers/theme-provider";
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  viewportFit: "cover",
+};
 
 export const metadata: Metadata = {
   title: {
@@ -27,12 +37,6 @@ export const metadata: Metadata = {
   authors: [{ name: "fal.ai" }],
   creator: "fal.ai",
   publisher: "fal.ai",
-  viewport: {
-    width: "device-width",
-    initialScale: 1,
-    maximumScale: 1,
-    viewportFit: "cover",
-  },
   formatDetection: {
     email: false,
     address: false,
@@ -108,7 +112,6 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <head>
-        <meta name="color-scheme" content="dark" />
         <BotIdClient
           protect={[
             {
@@ -123,7 +126,19 @@ export default function RootLayout({
         />
       </head>
       <body className={`font-sans bg-background text-foreground min-h-screen`}>
-        <CoreProviders>{children}</CoreProviders>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <ClerkProvider>
+            <CoreProviders>
+              {children}
+              <ServiceWorkerRegistration />
+            </CoreProviders>
+          </ClerkProvider>
+        </ThemeProvider>
       </body>
       <Analytics />
     </html>

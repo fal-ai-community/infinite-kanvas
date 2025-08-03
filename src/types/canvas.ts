@@ -12,6 +12,7 @@ export interface PlacedImage {
   cropY?: number;
   cropWidth?: number;
   cropHeight?: number;
+  cloudImageId?: string; // Reference to cloud storage
 }
 
 export interface PlacedVideo extends Omit<PlacedImage, "isGenerated"> {
