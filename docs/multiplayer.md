@@ -2,7 +2,7 @@
 
 ## Overview
 
-fal infinite kanvas supports real-time collaborative editing using PartyKit. Multiple users can work on the same canvas simultaneously with live cursor tracking, presence indicators, and chat functionality.
+Infinite Kanvas supports real-time collaborative editing using PartyKit. Multiple users can work on the same canvas simultaneously with live cursor tracking, presence indicators, in-room chat, and seamless synchronization of all canvas operations.
 
 ## Getting Started
 
@@ -48,34 +48,44 @@ npm run dev
 
 #### Architecture
 
+The multiplayer system follows a clean, event-driven architecture:
+
 - **PartyKit**: WebSocket server for real-time communication
 - **Jotai atoms**: Centralized state management for multiplayer
 - **Adapter pattern**: Clean separation between single/multiplayer logic
-- **fal.storage**: Automatic image hosting for shared canvases
+- **Cloudflare storage**: Automatic image hosting + fal.ai collaboration
+- **Room registry**: Central room discovery and management
 
 #### Key Files
 
 ```
 /party/
-  ├── index.ts        # Main PartyKit server
-  └── registry.ts     # Room discovery server
+  ├── index.ts              # Main PartyKit server
+  └── registry.ts           # Room discovery server
 
 /src/lib/multiplayer/
-  ├── adapter.ts      # PartyKit sync adapter
-  ├── types.ts        # TypeScript types
-  └── index.ts        # Exports
+  ├── adapter.ts           # PartyKit sync adapter
+  ├── index.ts             # Exports
+  └── types.ts             # TypeScript types
 
 /src/atoms/
-  └── multiplayer.ts  # Jotai atoms for state
+  └── multiplayer.ts       # Jotai atoms for multiplayer state
 
 /src/components/canvas/multiplayer/
-  ├── MultiplayerCursors.tsx  # Cursor rendering
-  ├── MultiplayerPanel.tsx    # User list & controls
-  └── ConnectionStatus.tsx    # Connection indicator
+  ├── MultiplayerCursors.tsx   # Real-time cursor rendering
+  ├── MultiplayerPanel.tsx     # User list, chat & controls
+  └── ConnectionStatus.tsx     # Connection state indicator
 
 /src/hooks/
-  ├── use-multiplayer.ts      # Main multiplayer hook
-  └── use-room-registry.ts    # Room discovery hook
+  ├── use-multiplayer.ts       # Main multiplayer hook
+  ├── use-room-registry.ts     # Room discovery & listing
+  └── use-auto-save.ts         # Auto-save with multiplayer sync
+
+/src/
+  ├── app/
+  │   ├── (authenticated)/k/[roomId]/...  # Room pages
+  │   └── api/                   # API routes
+  └── middleware.ts            # Authentication middleware
 ```
 
 ## Production Deployment
@@ -86,17 +96,21 @@ npm run dev
 # Deploy to PartyKit
 npx partykit deploy
 
-# Set environment variable in your hosting platform
+# Set environment variables
 NEXT_PUBLIC_PARTYKIT_HOST=your-app.your-username.partykit.dev
+CLOUDFLARE_ACCOUNT_ID=your_account_id
+CLOUDFLARE_API_TOKEN=your_api_token
 ```
 
 ### Environment Variables
 
 ```env
-# .env.local (for production)
+# .env.local (production)
 NEXT_PUBLIC_PARTYKIT_HOST=your-app.your-username.partykit.dev
+CLOUDFLARE_ACCOUNT_ID=your_cloudflare_account_id
+CLOUDFLARE_API_TOKEN=your_cloudflare_api_token
 
-# Development (optional, defaults to localhost:1999)
+# Development (defaults)
 NEXT_PUBLIC_PARTYKIT_HOST=localhost:1999
 ```
 
@@ -106,20 +120,76 @@ NEXT_PUBLIC_PARTYKIT_HOST=localhost:1999
 - **Click on user**: Follow their viewport
 - **Middle-click drag**: Break following (pan canvas)
 
-## Performance
+## Performance & Scaling
 
-- Cursor updates throttled to 60fps for smooth tracking
-- Viewport changes debounced to 100ms
-- Only visible cursors are rendered
-- Automatic reconnection with exponential backoff
-- Idle timeout removes inactive cursors after 5 seconds
+### Optimizations
 
-## Limitations
+- **Cursor updates**: Throttled to 60fps for smooth tracking
+- **Viewport sync**: Debounced to 100ms for efficiency
+- **Rendering**: Only visible cursors rendered
+- **Reconnection**: Exponential backoff for reliability
+- **Idle management**: Inactive cursors removed after 5 seconds
 
-- Room sessions are ephemeral (not persisted)
+### Scaling Considerations
+
+- Each PartyKit room lives in its own isolate
+- Room discovery uses KV for horizontal scaling
+- Image references via fal.ai URLs prevent data duplication
+- Canvas state efficiently serialized for sync
+
+### Multiplayer Events & Data Flow
+
+```typescript
+// Room connection flow
+1. User visits /k/[roomId]
+2. Check authentication (Clerk)
+3. Connect to PartyKit WebSocket
+4. Join room with user info
+5. Sync canvas state
+6. Start real-time collaboration
+
+// Events handled:
+// - cursor:move - Cursor position updates
+// - canvas:transform - Canvas viewport changes
+// - image:transform - Image manipulations
+// - image:add/remove - Canvas content changes
+// - user:join/leave - Presence management
+// - chat:message - In-room communication
+```
+
+## Limitations & Future Enhancements
+
+### Current Limitations
+
+- Room sessions are ephemeral (not persisted between restarts)
 - Maximum 100 chat messages per room
 - WebSocket connections may timeout on some hosts
-- Large images require upload before syncing
+- Large images require upload before sharing
+- No offline support for multiplayer sessions
+
+### Future Enhancements
+
+#### v1.3 - Persistence Layer
+
+- Persistent rooms with save/load functionality
+- Room templates and presets
+- Version history for collaborative work
+- Export/import room configurations
+
+#### v1.4 - Enhanced Collaboration
+
+- User authentication and profiles
+- Permissions system (view/edit/admin)
+- Voice/video chat integration
+- Comments and annotations
+
+#### v2.0 - Mobile & Advanced Features
+
+- Native mobile apps with multiplayer
+- Collaborative drawing tools
+- Real-time filters and effects
+- Offline synchronization
+- AI-powered collaborative features
 
 ## Security
 
