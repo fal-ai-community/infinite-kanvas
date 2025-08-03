@@ -102,10 +102,20 @@ export const MultiplayerPanel: React.FC<MultiplayerPanelProps> = ({
     setTimeout(() => setIsAnimating(false), 350);
   };
 
-  const handleSendMessage = () => {
-    if (!chatInput.trim()) return;
+  const sanitizeInput = (input: string): string => {
+    // Remove any HTML tags and limit length
+    return input
+      .replace(/<[^>]*>/g, "") // Remove HTML tags
+      .replace(/[<>]/g, "") // Remove angle brackets
+      .trim()
+      .slice(0, 500); // Limit to 500 characters
+  };
 
-    sendChatMessage(chatInput.trim());
+  const handleSendMessage = () => {
+    const sanitizedInput = sanitizeInput(chatInput);
+    if (!sanitizedInput) return;
+
+    sendChatMessage(sanitizedInput);
     setChatInput("");
   };
 
@@ -263,11 +273,13 @@ export const MultiplayerPanel: React.FC<MultiplayerPanelProps> = ({
                                         }
                                         onKeyDown={(e) => {
                                           if (e.key === "Enter") {
-                                            const trimmedName = newName.trim();
-                                            if (trimmedName) {
+                                            const sanitizedName = sanitizeInput(
+                                              newName,
+                                            ).slice(0, 50);
+                                            if (sanitizedName) {
                                               localStorage.setItem(
                                                 "userName",
-                                                trimmedName,
+                                                sanitizedName,
                                               );
                                               setEditingName(false);
                                               // Reload to apply new name

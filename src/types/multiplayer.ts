@@ -11,6 +11,8 @@ export interface PresenceData {
   cursor: { x: number; y: number } | null;
   color: string;
   name?: string;
+  email?: string;
+  image?: string;
   viewport?: ViewportState;
   lastActive?: number;
   isFollowing?: string | null;

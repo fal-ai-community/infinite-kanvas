@@ -1,10 +1,10 @@
 "use client";
 
-import React, { memo } from "react";
+import React, { memo, useMemo } from "react";
 import { useAtomValue } from "jotai";
 import { presenceMapAtom } from "@/atoms/multiplayer";
 import { useMultiplayer } from "@/hooks/use-multiplayer";
-import type { ViewportState } from "@/types/multiplayer";
+import type { ViewportState, PresenceData } from "@/types/multiplayer";
 
 interface MultiplayerCursorsProps {
   viewport: ViewportState;
@@ -64,65 +64,97 @@ const Cursor = memo(
 
 Cursor.displayName = "Cursor";
 
+// Separate component for cursor logic to optimize re-renders
+const CursorRenderer = memo(
+  ({
+    userId,
+    presence,
+    viewport,
+    windowWidth,
+    windowHeight,
+  }: {
+    userId: string;
+    presence: PresenceData;
+    viewport: ViewportState;
+    windowWidth: number;
+    windowHeight: number;
+  }) => {
+    // Memoize screen position calculations
+    const { screenX, screenY, isInViewport } = useMemo(() => {
+      if (!presence.cursor) {
+        return { screenX: 0, screenY: 0, isInViewport: false };
+      }
+
+      const x = (presence.cursor.x - viewport.x) * viewport.scale;
+      const y = (presence.cursor.y - viewport.y) * viewport.scale;
+
+      const inViewport =
+        x >= -50 && x <= windowWidth + 50 && y >= -50 && y <= windowHeight + 50;
+
+      return { screenX: x, screenY: y, isInViewport: inViewport };
+    }, [
+      presence.cursor?.x,
+      presence.cursor?.y,
+      viewport.x,
+      viewport.y,
+      viewport.scale,
+      windowWidth,
+      windowHeight,
+    ]);
+
+    if (!isInViewport || !presence.cursor) {
+      return null;
+    }
+
+    return (
+      <Cursor
+        x={screenX}
+        y={screenY}
+        color={presence.color}
+        name={presence.name || "Anonymous"}
+      />
+    );
+  },
+);
+
+CursorRenderer.displayName = "CursorRenderer";
+
 export const MultiplayerCursors: React.FC<MultiplayerCursorsProps> = memo(
   ({ viewport }) => {
     const presenceMap = useAtomValue(presenceMapAtom);
     const { syncAdapter } = useMultiplayer();
     const myUserId = syncAdapter?.getConnectionId();
 
-    // Debug logging commented out for production
-    // console.log("[MultiplayerCursors] Rendering cursors:", {
-    //   presenceMapSize: presenceMap.size,
-    //   myUserId,
-    //   viewport,
-    //   presenceEntries: Array.from(presenceMap.entries()).map(([id, p]) => ({
-    //     id,
-    //     name: p.name,
-    //     cursor: p.cursor
-    //   }))
-    // });
+    // Memoize window dimensions to avoid re-renders on every frame
+    const windowDimensions = useMemo(
+      () => ({
+        width: typeof window !== "undefined" ? window.innerWidth : 1920,
+        height: typeof window !== "undefined" ? window.innerHeight : 1080,
+      }),
+      [], // Only calculate once on mount
+    );
+
+    // Memoize the cursor entries to avoid re-creating array on every render
+    const cursorEntries = useMemo(
+      () =>
+        Array.from(presenceMap.entries()).filter(
+          ([userId]) => userId !== myUserId,
+        ),
+      [presenceMap, myUserId],
+    );
 
     return (
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {Array.from(presenceMap.entries()).map(([userId, presence]) => {
-          // Don't render our own cursor
-          if (userId === myUserId || !presence.cursor) {
-            // console.log("[MultiplayerCursors] Skipping cursor:", userId, "isMe:", userId === myUserId, "hasCursor:", !!presence.cursor);
-            return null;
-          }
-
-          // Transform cursor position based on viewport
-          const screenX = (presence.cursor.x - viewport.x) * viewport.scale;
-          const screenY = (presence.cursor.y - viewport.y) * viewport.scale;
-
-          // console.log("[MultiplayerCursors] Rendering cursor for:", userId, {
-          //   canvasPos: presence.cursor,
-          //   screenPos: { x: screenX, y: screenY },
-          //   viewport
-          // });
-
-          // Only render if cursor is in viewport
-          const isInViewport =
-            screenX >= -50 &&
-            screenX <= window.innerWidth + 50 &&
-            screenY >= -50 &&
-            screenY <= window.innerHeight + 50;
-
-          if (!isInViewport) {
-            // console.log("[MultiplayerCursors] Cursor out of viewport:", { screenX, screenY, viewportSize: { width: window.innerWidth, height: window.innerHeight } });
-            return null;
-          }
-
-          return (
-            <Cursor
-              key={userId}
-              x={screenX}
-              y={screenY}
-              color={presence.color}
-              name={presence.name || "Anonymous"}
-            />
-          );
-        })}
+        {cursorEntries.map(([userId, presence]) => (
+          <CursorRenderer
+            key={userId}
+            userId={userId}
+            presence={presence}
+            viewport={viewport}
+            windowWidth={windowDimensions.width}
+            windowHeight={windowDimensions.height}
+          />
+        ))}
       </div>
     );
   },

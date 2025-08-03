@@ -18,28 +18,57 @@ export default class CanvasRoom implements Party.Server {
     hibernate: true, // Enable hibernation to save resources
   };
 
-  private connections = new Map<string, { color: string; name: string }>();
+  private connections = new Map<
+    string,
+    {
+      color: string;
+      name: string;
+      email?: string;
+      image?: string;
+    }
+  >();
 
-  constructor(readonly room: Party.Room) {
-    console.log(`[PartyKit] Room ${room.id} initialized`);
-  }
+  constructor(readonly room: Party.Room) {}
 
   async onConnect(connection: Party.Connection, ctx: Party.ConnectionContext) {
     try {
-      console.log(
-        `[PartyKit] New connection: ${connection.id} to room ${this.room.id}`,
-      );
-      console.log(
-        `[PartyKit] Total connections in room: ${this.connections.size}`,
-      );
-
       // Update registry with new user count
       await this.updateRegistry();
 
+      // Check if room state exists in storage
+      let state = await this.room.storage.get<CanvasState>("canvasState");
+
+      // If no state exists, try to load from D1
+      if (!state && this.room.id) {
+        try {
+          // Fetch canvas from D1 database using tRPC endpoint
+          const response = await fetch(
+            `${this.getApiUrl()}/api/trpc/canvas.get`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                json: { id: this.room.id },
+              }),
+            },
+          );
+          if (response.ok) {
+            const trpcResponse = await response.json();
+            if (trpcResponse.result?.data?.json?.state) {
+              state = trpcResponse.result.data.json.state as CanvasState;
+              // Store in room storage for future connections
+              await this.room.storage.put("canvasState", state);
+            }
+          }
+        } catch (error) {
+          console.error(`[PartyKit] Failed to load canvas from D1:`, error);
+        }
+      }
+
       // Send current room state to new connection
-      const state = await this.room.storage.get<CanvasState>("canvasState");
       if (state) {
-        console.log(`[PartyKit] Sending canvas state to ${connection.id}`);
         connection.send(
           JSON.stringify({
             type: "sync:full",
@@ -51,9 +80,6 @@ export default class CanvasRoom implements Party.Server {
       // Send chat history to new connection
       const chatMessages =
         (await this.room.storage.get<ChatMessage[]>("chatMessages")) || [];
-      console.log(
-        `[PartyKit] Sending ${chatMessages.length} chat messages to ${connection.id}`,
-      );
       connection.send(
         JSON.stringify({
           type: "chat:history",
@@ -78,9 +104,8 @@ export default class CanvasRoom implements Party.Server {
       const url = new URL(ctx.request.url);
       const userName =
         url.searchParams.get("name") || `User${connection.id.slice(0, 4)}`;
-      console.log(
-        `[PartyKit] User ${connection.id} joined as "${userName}" with color ${userColor}`,
-      );
+      const userEmail = url.searchParams.get("email");
+      const userImage = url.searchParams.get("image");
 
       // Send existing users to new connection BEFORE storing new user
       const existingUsers = [];
@@ -95,17 +120,21 @@ export default class CanvasRoom implements Party.Server {
                 cursor: null,
                 color: userInfo.color,
                 name: userInfo.name,
+                email: userInfo.email,
+                image: userInfo.image,
               } as PresenceData,
             }),
           );
         }
       }
-      console.log(
-        `[PartyKit] Sent ${existingUsers.length} existing users to ${connection.id}`,
-      );
 
       // NOW store the new connection info
-      this.connections.set(connection.id, { color: userColor, name: userName });
+      this.connections.set(connection.id, {
+        color: userColor,
+        name: userName,
+        email: userEmail || undefined,
+        image: userImage || undefined,
+      });
 
       // Send connection info to the user (including their color)
       connection.send(
@@ -115,14 +144,13 @@ export default class CanvasRoom implements Party.Server {
             userId: connection.id,
             color: userColor,
             name: userName,
+            email: userEmail,
+            image: userImage,
           },
         }),
       );
 
       // Broadcast new user joined to others (but not to themselves)
-      console.log(
-        `[PartyKit] Broadcasting new user ${connection.id} to others`,
-      );
       this.room.broadcast(
         JSON.stringify({
           type: "presence:join",
@@ -131,13 +159,11 @@ export default class CanvasRoom implements Party.Server {
             cursor: null,
             color: userColor,
             name: userName,
+            email: userEmail,
+            image: userImage,
           } as PresenceData,
         }),
         [connection.id],
-      );
-
-      console.log(
-        `[PartyKit] Total connections after: ${this.connections.size}`,
       );
     } catch (error) {
       console.error(`[PartyKit] Error in onConnect:`, error);
@@ -145,8 +171,24 @@ export default class CanvasRoom implements Party.Server {
   }
 
   async onMessage(message: string, sender: Party.Connection) {
-    const event = JSON.parse(message);
-    console.log(`[PartyKit] Received ${event.type} from ${sender.id}`);
+    let event;
+    try {
+      event = JSON.parse(message);
+    } catch (error) {
+      console.error(
+        `[PartyKit] Failed to parse message from ${sender.id}:`,
+        error,
+      );
+      return;
+    }
+
+    if (!event || typeof event.type !== "string") {
+      console.error(
+        `[PartyKit] Invalid message format from ${sender.id}:`,
+        event,
+      );
+      return;
+    }
 
     switch (event.type) {
       case "image:update":
@@ -172,6 +214,8 @@ export default class CanvasRoom implements Party.Server {
                 cursor: event.data.cursor,
                 color: cursorUser.color,
                 name: cursorUser.name,
+                email: cursorUser.email,
+                image: cursorUser.image,
               },
             }),
             [sender.id],
@@ -193,9 +237,6 @@ export default class CanvasRoom implements Party.Server {
       case "chat:send":
         // Handle chat message
         const userInfo = this.connections.get(sender.id);
-        console.log(
-          `[PartyKit] Chat message from ${sender.id}: "${event.data?.text}"`,
-        );
 
         if (userInfo && event.data?.text) {
           const chatMessage: ChatMessage = {
@@ -218,12 +259,8 @@ export default class CanvasRoom implements Party.Server {
           }
 
           await this.room.storage.put("chatMessages", messages);
-          console.log(
-            `[PartyKit] Stored chat message, total messages: ${messages.length}`,
-          );
 
           // Broadcast to all clients
-          console.log(`[PartyKit] Broadcasting chat message to all clients`);
           this.room.broadcast(
             JSON.stringify({
               type: "chat:new",
@@ -231,7 +268,7 @@ export default class CanvasRoom implements Party.Server {
             }),
           );
         } else {
-          console.log(`[PartyKit] Invalid chat message from ${sender.id}:`, {
+          console.error(`[PartyKit] Invalid chat message from ${sender.id}:`, {
             userInfo,
             text: event.data?.text,
           });
@@ -241,13 +278,10 @@ export default class CanvasRoom implements Party.Server {
   }
 
   async onClose(connection: Party.Connection) {
-    console.log(`[PartyKit] User ${connection.id} disconnected`);
-
     // Clean up connection info
     this.connections.delete(connection.id);
 
     // Broadcast user left
-    console.log(`[PartyKit] Broadcasting user ${connection.id} left`);
     this.room.broadcast(
       JSON.stringify({
         type: "presence:leave",
@@ -271,7 +305,10 @@ export default class CanvasRoom implements Party.Server {
     }
   }
 
-  private async updateStorage(event: any) {
+  private async updateStorage(event: {
+    type: "image:add" | "image:update" | "image:remove";
+    data: PlacedImage | { imageId: string };
+  }) {
     const state = (await this.room.storage.get<CanvasState>("canvasState")) || {
       images: [],
       viewport: { x: 0, y: 0, scale: 1 },
@@ -279,18 +316,28 @@ export default class CanvasRoom implements Party.Server {
 
     switch (event.type) {
       case "image:add":
-        state.images.push(event.data);
+        if ("src" in event.data) {
+          state.images.push(event.data as PlacedImage);
+        }
         break;
       case "image:update":
-        const index = state.images.findIndex((img) => img.id === event.data.id);
-        if (index !== -1) {
-          state.images[index] = event.data;
+        if ("src" in event.data) {
+          const updateData = event.data as PlacedImage;
+          const index = state.images.findIndex(
+            (img) => img.id === updateData.id,
+          );
+          if (index !== -1) {
+            state.images[index] = updateData;
+          }
         }
         break;
       case "image:remove":
-        state.images = state.images.filter(
-          (img) => img.id !== event.data.imageId,
-        );
+        if ("imageId" in event.data) {
+          const removeData = event.data as { imageId: string };
+          state.images = state.images.filter(
+            (img) => img.id !== removeData.imageId,
+          );
+        }
         break;
     }
 
@@ -300,7 +347,13 @@ export default class CanvasRoom implements Party.Server {
   private async updateRegistry() {
     try {
       // Get room metadata from storage
-      const roomInfo = (await this.room.storage.get<any>("roomInfo")) || {};
+      interface RoomInfo {
+        name?: string;
+        createdAt?: number;
+        updatedAt?: number;
+      }
+      const roomInfo =
+        (await this.room.storage.get<RoomInfo>("roomInfo")) || {};
 
       // Send update to registry party via WebSocket
       const host = process.env.PARTYKIT_HOST || "localhost:1999";
@@ -342,6 +395,17 @@ export default class CanvasRoom implements Party.Server {
     } catch (error) {
       console.error(`[PartyKit] Failed to notify registry for cleanup:`, error);
     }
+  }
+
+  private getApiUrl(): string {
+    // In production, use the public app URL
+    if (process.env.NODE_ENV === "production") {
+      return (
+        process.env.NEXT_PUBLIC_APP_URL || "https://infinite-kanvas.vercel.app"
+      );
+    }
+    // In development, use localhost
+    return "http://localhost:3000";
   }
 }
 

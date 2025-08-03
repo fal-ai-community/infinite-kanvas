@@ -30,6 +30,7 @@ import {
   CURSOR_THROTTLE_MS,
   VIEWPORT_DEBOUNCE_MS,
 } from "@/lib/constants";
+import { useUser } from "@clerk/nextjs";
 
 // Connection state atom
 export type ConnectionState =
@@ -49,6 +50,7 @@ export function useMultiplayer(roomId?: string) {
   const { toast } = useToast();
   const [customApiKey] = [""]; // Replace with actual state if needed
   const falClient = useFalClient(customApiKey);
+  const { user } = useUser();
 
   // Connection state
   const setConnectionState = useSetAtom(connectionStateAtom);
@@ -101,7 +103,6 @@ export function useMultiplayer(roomId?: string) {
     // Update room ID
     setRoomId(roomId);
 
-    console.log(`[useMultiplayer] Setting up connection for room ${roomId}`);
     setConnectionState("connecting");
 
     // Use a setup flag to prevent double connections
@@ -112,6 +113,9 @@ export function useMultiplayer(roomId?: string) {
         roomId,
         falClient,
         toast,
+        userName: user?.fullName || user?.firstName || undefined,
+        userEmail: user?.primaryEmailAddress?.emailAddress || undefined,
+        userImage: user?.imageUrl || undefined,
         setIsApiKeyDialogOpen: () => {},
         onConnectionStateChange: (
           state: "connected" | "disconnected" | "error",
@@ -142,27 +146,22 @@ export function useMultiplayer(roomId?: string) {
 
       unsubscribe = partyConnection.subscribe({
         onFullSync: (state) => {
-          console.log("Full sync received:", state);
           setImages(state.images);
         },
 
         onImageUpdate: (image) => {
-          console.log("Image update received:", image);
           updateImage({ id: image.id, updates: image });
         },
 
         onImageAdd: (image) => {
-          console.log("Image add received:", image);
           addImage(image);
         },
 
         onImageRemove: (imageId) => {
-          console.log("Image remove received:", imageId);
           removeImage(imageId);
         },
 
         onPresenceUpdate: (data) => {
-          console.log("[useMultiplayer] Presence update received:", data);
           if (data.type === "leave") {
             removePresence(data.userId);
             if (data.userId === followingUserId) {
@@ -193,20 +192,14 @@ export function useMultiplayer(roomId?: string) {
               cursor: data.cursor,
               color: data.color || existingUser?.color || "#FF6B6B",
               name: data.name || existingUser?.name || "Anonymous",
+              email: data.email || existingUser?.email,
+              image: data.image || existingUser?.image,
               lastActive:
                 data.type === "move"
                   ? Date.now()
                   : existingUser?.lastActive || Date.now(),
             };
 
-            console.log(
-              "[useMultiplayer] Updating presence for user:",
-              data.userId,
-              "type:",
-              data.type,
-              "cursor:",
-              data.cursor,
-            );
             updatePresence({ userId: data.userId, data: presenceData });
 
             if (data.type === "join" && !isCurrentUser) {
@@ -243,7 +236,6 @@ export function useMultiplayer(roomId?: string) {
         },
 
         onChatMessage: (message) => {
-          console.log("[useMultiplayer] Chat message received:", message);
           addChatMessage(message);
         },
       });
@@ -264,9 +256,6 @@ export function useMultiplayer(roomId?: string) {
 
       reconnectTimeoutRef.current = setTimeout(() => {
         if (mountedRef.current && !cleanupExecuted) {
-          console.log(
-            `[useMultiplayer] Attempting reconnect (attempt ${reconnectAttemptsRef.current})`,
-          );
           setupConnection();
         }
       }, delay);
@@ -277,7 +266,6 @@ export function useMultiplayer(roomId?: string) {
 
     // Cleanup
     return () => {
-      console.log("[useMultiplayer] Cleaning up...");
       cleanupExecuted = true;
       mountedRef.current = false;
 

@@ -10,6 +10,9 @@ import type { SyncHandlers, ViewportState } from "@/types/multiplayer";
 interface PartyKitConnectionOptions {
   falClient: FalClient;
   roomId: string;
+  userName?: string;
+  userEmail?: string;
+  userImage?: string;
   setIsApiKeyDialogOpen: React.Dispatch<React.SetStateAction<boolean>>;
   toast: (props: {
     title: string;
@@ -21,10 +24,26 @@ interface PartyKitConnectionOptions {
   ) => void;
 }
 
+interface PendingOperation {
+  type:
+    | "image:add"
+    | "image:update"
+    | "image:remove"
+    | "viewport:change"
+    | "generation:start"
+    | "generation:complete";
+  data:
+    | PlacedImage
+    | { imageId: string }
+    | ViewportState
+    | { imageId: string; prompt: string };
+  timestamp: number;
+}
+
 export class PartyKitConnection {
   private socket: PartySocket;
   private handlers: SyncHandlers = {};
-  private pendingOperations = new Map<string, any>();
+  private pendingOperations = new Map<string, PendingOperation>();
   private connectionId: string | null = null;
   private connected = false;
   private userName: string;
@@ -33,21 +52,27 @@ export class PartyKitConnection {
   constructor(private options: PartyKitConnectionOptions) {
     const host = PARTYKIT_HOST;
 
-    // Get username from localStorage
-    this.userName = localStorage.getItem("userName") || "Guest";
+    // Use Clerk user info if available, otherwise fall back to Guest
+    this.userName =
+      options.userName || localStorage.getItem("userName") || "Guest";
 
-    console.log(
-      `[Client] Creating PartySocket connection to room ${options.roomId} at ${host}`,
-    );
-    console.log(`[Client] Constructor called at ${new Date().toISOString()}`);
+    const queryParams: Record<string, string> = {
+      name: this.userName,
+    };
+
+    // Add optional user info to query params
+    if (options.userEmail) {
+      queryParams.email = options.userEmail;
+    }
+    if (options.userImage) {
+      queryParams.image = options.userImage;
+    }
 
     this.socket = new PartySocket({
       host,
       room: options.roomId,
       party: "main",
-      query: {
-        name: this.userName,
-      },
+      query: queryParams,
     });
 
     this.socket.addEventListener("open", this.handleOpen);
@@ -59,36 +84,38 @@ export class PartyKitConnection {
   private handleOpen = () => {
     this.connected = true;
     this.connectionId = this.socket.id;
-    console.log("[Client] PartyKit connected with ID:", this.connectionId);
     this.options.onConnectionStateChange?.("connected");
   };
 
   private handleClose = (event: CloseEvent) => {
     this.connected = false;
-    console.log(
-      `[Client] PartyKit disconnected - Code: ${event.code}, Reason: ${event.reason}`,
-    );
-
     this.options.onConnectionStateChange?.("disconnected");
 
     // Try to reconnect if it was an abnormal closure
     if (event.code !== 1000 && event.code !== 1001) {
-      console.log("[Client] Attempting to reconnect in 1 second...");
       setTimeout(() => {
-        console.log("[Client] Reconnecting...");
         this.socket.reconnect();
       }, 1000);
     }
   };
 
   private handleError = (error: Event) => {
-    console.error("[Client] PartyKit error:", error);
     this.options.onConnectionStateChange?.("error");
   };
 
   private handleMessage = (event: MessageEvent) => {
-    const message = JSON.parse(event.data);
-    console.log("[Client] Received message:", message.type, message.data);
+    let message;
+    try {
+      message = JSON.parse(event.data);
+    } catch (error) {
+      console.error("[PartyKit] Failed to parse message:", error);
+      return;
+    }
+
+    if (!message || typeof message.type !== "string") {
+      console.error("[PartyKit] Invalid message format:", message);
+      return;
+    }
 
     switch (message.type) {
       case "sync:full":
@@ -253,7 +280,6 @@ export class PartyKitConnection {
   subscribe(handlers: SyncHandlers): () => void {
     this.handlers = handlers;
     return () => {
-      console.log("[Client] Unsubscribing and closing connection");
       this.socket.close(1000, "Client unsubscribed");
     };
   }
@@ -272,9 +298,6 @@ export class PartyKitConnection {
       return;
     }
 
-    console.log(
-      `[Client] Sending chat message: "${text}" Connected: ${this.connected}, Socket state: ${this.socket.readyState}`,
-    );
     this.socket.send(
       JSON.stringify({
         type: "chat:send",

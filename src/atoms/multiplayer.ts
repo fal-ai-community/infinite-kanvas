@@ -12,7 +12,10 @@ export const viewportAtom = atom<ViewportState>({ x: 0, y: 0, scale: 1 });
 export const presenceMapAtom = atom<Map<string, PresenceData>>(new Map());
 
 // Connection and room atoms
-export const connectionAtom = atom<any | null>(null); // PartyKitConnection instance
+// Import the PartyKitConnection type
+import type { PartyKitConnection } from "@/lib/multiplayer/adapter";
+
+export const connectionAtom = atom<PartyKitConnection | null>(null);
 export const roomIdAtom = atom<string | undefined>(undefined);
 
 // Keep syncAdapterAtom as alias for backwards compatibility
@@ -71,19 +74,6 @@ export const updatePresenceAtom = atom(
     const currentMap = get(presenceMapAtom);
     const newMap = new Map(currentMap);
     newMap.set(userId, data);
-    console.log(
-      "[atoms/multiplayer] Updated presence map:",
-      newMap.size,
-      "users",
-    );
-    console.log(
-      "[atoms/multiplayer] Presence map contents:",
-      Array.from(newMap.entries()).map(([k, v]) => ({
-        key: k,
-        userId: v.userId,
-        name: v.name,
-      })),
-    );
     set(presenceMapAtom, newMap);
   },
 );
