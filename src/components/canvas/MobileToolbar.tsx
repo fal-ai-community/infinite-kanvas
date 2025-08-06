@@ -78,9 +78,9 @@ export const MobileToolbar: React.FC<MobileToolbarProps> = ({
         title="Run"
       >
         {isGenerating ? (
-          <SpinnerIcon className="h-12 w-12 animate-spin" />
+          <SpinnerIcon className="h-12 w-12 animate-spin text-content" />
         ) : (
-          <Play className="h-12 w-12" />
+          <Play className="h-12 w-12 text-content" />
         )}
       </Button>
 
@@ -149,7 +149,7 @@ export const MobileToolbar: React.FC<MobileToolbarProps> = ({
           sideOffset={10}
           alignOffset={-4}
           align="start"
-          className="w-48 space-y-1 bg-background/80 border rounded p-1"
+          className="w-48 space-y-1 bg-background/80 border rounded-xl p-1"
         >
           <DropdownMenuItem asChild>
             <Button

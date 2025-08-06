@@ -83,7 +83,7 @@ export const DimensionDisplay: React.FC<DimensionDisplayProps> = ({
 
   return (
     <div
-      className="fixed pointer-events-none z-50 bg-background/90 backdrop-blur-sm border rounded-md px-2 py-1 text-xs text-foreground/80 shadow-sm hidden md:block"
+      className="fixed pointer-events-none z-10 bg-background/90 backdrop-blur-sm border rounded-md px-2 py-1 text-xs text-foreground/80 shadow-sm hidden md:block"
       style={{
         left: screenX,
         top: screenY + 8, // 8px below the image

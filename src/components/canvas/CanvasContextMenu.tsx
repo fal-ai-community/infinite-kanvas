@@ -97,9 +97,9 @@ export const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
       >
         <div className="flex items-center gap-2">
           {isGenerating ? (
-            <SpinnerIcon className="h-4 w-4 animate-spin" />
+            <SpinnerIcon className="h-4 w-4 animate-spin text-content" />
           ) : (
-            <Play className="h-4 w-4" />
+            <Play className="h-4 w-4 text-content" />
           )}
           <span>Run</span>
         </div>
@@ -263,7 +263,7 @@ export const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
               />
               <Button
                 type="button"
-                variant="primary"
+                variant="secondary"
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
@@ -275,11 +275,18 @@ export const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
               >
                 {isIsolating ? (
                   <>
-                    <SpinnerIcon className="h-4 w-4 animate-spin mr-1" />
-                    Processing...
+                    <SpinnerIcon className="h-4 w-4 animate-spin mr-1 text-white" />
+                    <span className="text-white">Processing...</span>
                   </>
                 ) : (
-                  "Enter"
+                  <>
+                    <span className="text-white">Run</span>
+                    <span className="flex flex-row space-x-0.5">
+                      <kbd className="flex items-center justify-center text-white tracking-tighter rounded-xl border px-1 font-mono bg-white/10 border-white/10 h-6 min-w-6 text-xs">
+                        ↵
+                      </kbd>
+                    </span>
+                  </>
                 )}
               </Button>
             </div>

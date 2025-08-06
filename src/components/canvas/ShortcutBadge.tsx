@@ -6,7 +6,7 @@ import { keySymbolMap } from "@/utils/constants";
 export const shortcutBadgeVariants = cva(
   [
     "flex items-center justify-center tracking-tighter",
-    "rounded border px-1 font-mono",
+    "rounded-xl border px-1 font-mono",
   ],
   {
     variants: {
