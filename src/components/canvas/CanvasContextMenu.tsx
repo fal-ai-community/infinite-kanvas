@@ -221,7 +221,7 @@ export const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
         </ContextMenuSubTrigger>
         <ContextMenuSubContent
           className="w-72 p-3"
-          sideOffset={5}
+          sideOffset={10}
           onPointerDownOutside={(e) => e.preventDefault()}
         >
           <div
@@ -305,7 +305,7 @@ export const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({
           <Layers className="h-4 w-4" />
           Layer Order
         </ContextMenuSubTrigger>
-        <ContextMenuSubContent className="w-64" sideOffset={5}>
+        <ContextMenuSubContent className="w-64" sideOffset={10}>
           <ContextMenuItem
             onClick={sendToFront}
             disabled={selectedIds.length === 0}

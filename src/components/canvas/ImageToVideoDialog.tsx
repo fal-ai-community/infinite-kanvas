@@ -88,7 +88,7 @@ export const ImageToVideoDialog: React.FC<ImageToVideoDialogProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[600px] p-5 bg-white">
+      <DialogContent className="sm:max-w-[600px] p-5">
         <DialogHeader>
           <DialogTitle>Convert Image to Video</DialogTitle>
           <DialogDescription>
@@ -113,7 +113,7 @@ export const ImageToVideoDialog: React.FC<ImageToVideoDialogProps> = ({
           <div className="flex gap-4">
             {/* Left column - Image Preview */}
             <div className="w-1/3">
-              <div className="border rounded-md overflow-hidden aspect-square flex items-center justify-center bg-gray-50">
+              <div className="border rounded-md overflow-hidden aspect-square flex items-center justify-center">
                 {imageUrl && (
                   <img
                     src={imageUrl}
@@ -145,9 +145,9 @@ export const ImageToVideoDialog: React.FC<ImageToVideoDialogProps> = ({
               {selectedModel &&
                 Object.keys(selectedModel.options).length > 5 && (
                   <Button
-                    type="button"
+                    variant="ghost"
                     onClick={() => setShowMoreOptions(true)}
-                    className="w-full flex items-center justify-center gap-2 text-sm"
+                    className="px-0 pr-4 flex gap-2 text-sm"
                   >
                     <ChevronRight className="h-4 w-4" />
                     More Options
@@ -156,13 +156,12 @@ export const ImageToVideoDialog: React.FC<ImageToVideoDialogProps> = ({
             </div>
           </div>
 
-          <DialogFooter className="mt-4 flex justify-between">
+          <DialogFooter className="mt-4 flex justify-between gap-2">
             <Button
               type="button"
-              variant="default"
+              variant="secondary"
               onClick={onClose}
               disabled={isConverting}
-              className="border border-gray-300 bg-white hover:bg-gray-50"
             >
               Cancel
             </Button>
@@ -170,7 +169,7 @@ export const ImageToVideoDialog: React.FC<ImageToVideoDialogProps> = ({
               type="submit"
               variant="primary"
               disabled={isConverting}
-              className="bg-primary text-white hover:bg-[#5b21b6] flex items-center gap-2"
+              className="flex items-center gap-2"
             >
               {isConverting ? (
                 <>
@@ -201,9 +200,9 @@ export const ImageToVideoDialog: React.FC<ImageToVideoDialogProps> = ({
             />
 
             {/* Panel */}
-            <div className="fixed top-0 right-0 h-full w-96 bg-white shadow-xl z-50 transform transition-transform duration-300 ease-in-out">
+            <div className="fixed top-0 right-0 h-full w-96 bg-card shadow-xl z-50 transform transition-transform duration-300 ease-in-out">
               <div className="h-full flex flex-col">
-                <div className="flex items-center justify-between p-3 border-b bg-gray-50">
+                <div className="flex items-center justify-between p-3 border-b">
                   <h3 className="font-semibold text-lg">Advanced Options</h3>
                   <Button
                     type="button"
