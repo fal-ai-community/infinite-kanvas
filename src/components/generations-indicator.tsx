@@ -7,6 +7,8 @@ interface GenerationsIndicatorProps {
   speed?: number;
   isAnimating?: boolean;
   activeGenerationsSize?: number;
+  outputType?: "image" | "video";
+  isSuccess?: boolean;
 }
 
 export function GenerationsIndicator({
@@ -14,8 +16,13 @@ export function GenerationsIndicator({
   speed = 150,
   isAnimating = true,
   activeGenerationsSize,
+  outputType = "image",
+  isSuccess = false,
 }: GenerationsIndicatorProps) {
   const [currentFrame, setCurrentFrame] = useState(0);
+
+  // Determine the fill color based on output type
+  const fillColor = outputType === "video" ? "#A855F7" : "#EC0648"; // purple for video, red for image
 
   const svgFrames = [
     <motion.svg
@@ -31,7 +38,7 @@ export function GenerationsIndicator({
         y="3"
         width="3"
         height="3"
-        fill="#EC0648"
+        fill={fillColor}
         fillOpacity="0.08"
       />
       <rect
@@ -39,7 +46,7 @@ export function GenerationsIndicator({
         y="13"
         width="3"
         height="3"
-        fill="#EC0648"
+        fill={fillColor}
         fillOpacity="0.08"
       />
       <rect
@@ -47,7 +54,7 @@ export function GenerationsIndicator({
         y="13"
         width="3"
         height="3"
-        fill="#EC0648"
+        fill={fillColor}
         fillOpacity="0.08"
       />
       <rect
@@ -55,7 +62,7 @@ export function GenerationsIndicator({
         y="3"
         width="3"
         height="3"
-        fill="#EC0648"
+        fill={fillColor}
         fillOpacity="0.08"
       />
       <rect x="5" width="4" height="4" fill="#EC0648" fillOpacity="0.08" />
@@ -65,7 +72,7 @@ export function GenerationsIndicator({
         y="15"
         width="4"
         height="4"
-        fill="#EC0648"
+        fill={fillColor}
         fillOpacity="0.08"
       />
       <rect x="10" width="4" height="4" fill="#EC0648" fillOpacity="0.08" />
@@ -75,7 +82,7 @@ export function GenerationsIndicator({
         y="15"
         width="4"
         height="4"
-        fill="#EC0648"
+        fill={fillColor}
         fillOpacity="0.08"
       />
       <rect
@@ -83,7 +90,7 @@ export function GenerationsIndicator({
         y="15"
         width="4"
         height="4"
-        fill="#EC0648"
+        fill={fillColor}
         fillOpacity="0.08"
       />
       <rect
@@ -92,7 +99,7 @@ export function GenerationsIndicator({
         width="4"
         height="4"
         transform="rotate(90 19 5)"
-        fill="#EC0648"
+        fill={fillColor}
         fillOpacity="0.08"
       />
       <rect
@@ -101,7 +108,7 @@ export function GenerationsIndicator({
         width="4"
         height="4"
         transform="rotate(90 4 5)"
-        fill="#EC0648"
+        fill={fillColor}
         fillOpacity="0.08"
       />
       <rect
@@ -110,7 +117,7 @@ export function GenerationsIndicator({
         width="4"
         height="4"
         transform="rotate(90 9 5)"
-        fill="#EC0648"
+        fill={fillColor}
         fillOpacity="0.08"
       />
       <rect
@@ -119,7 +126,7 @@ export function GenerationsIndicator({
         width="4"
         height="4"
         transform="rotate(90 9 10)"
-        fill="#EC0648"
+        fill={fillColor}
         fillOpacity="0.08"
       />
       <rect
@@ -128,7 +135,7 @@ export function GenerationsIndicator({
         width="4"
         height="4"
         transform="rotate(90 14 10)"
-        fill="#EC0648"
+        fill={fillColor}
         fillOpacity="0.08"
       />
       <rect
@@ -137,7 +144,7 @@ export function GenerationsIndicator({
         width="4"
         height="4"
         transform="rotate(90 14 5)"
-        fill="#EC0648"
+        fill={fillColor}
         fillOpacity="0.08"
       />
       <rect
@@ -146,7 +153,7 @@ export function GenerationsIndicator({
         width="4"
         height="4"
         transform="rotate(90 19 10)"
-        fill="#EC0648"
+        fill={fillColor}
         fillOpacity="0.08"
       />
       <rect
@@ -155,7 +162,7 @@ export function GenerationsIndicator({
         width="4"
         height="4"
         transform="rotate(90 4 10)"
-        fill="#EC0648"
+        fill={fillColor}
         fillOpacity="0.08"
       />
       <rect
@@ -164,7 +171,7 @@ export function GenerationsIndicator({
         width="4"
         height="4"
         transform="rotate(90 4 15)"
-        fill="#EC0648"
+        fill={fillColor}
         fillOpacity="0.08"
       />
     </motion.svg>,
@@ -183,7 +190,7 @@ export function GenerationsIndicator({
         y="3"
         width="3"
         height="3"
-        fill="#EC0648"
+        fill={fillColor}
         fillOpacity="0.08"
       />
       <rect
@@ -191,7 +198,7 @@ export function GenerationsIndicator({
         y="13"
         width="3"
         height="3"
-        fill="#EC0648"
+        fill={fillColor}
         fillOpacity="0.08"
       />
       <rect
@@ -199,7 +206,7 @@ export function GenerationsIndicator({
         y="13"
         width="3"
         height="3"
-        fill="#EC0648"
+        fill={fillColor}
         fillOpacity="0.08"
       />
       <rect
@@ -207,7 +214,7 @@ export function GenerationsIndicator({
         y="3"
         width="3"
         height="3"
-        fill="#EC0648"
+        fill={fillColor}
         fillOpacity="0.08"
       />
       <rect x="5" width="4" height="4" fill="#EC0648" fillOpacity="0.08" />
@@ -217,7 +224,7 @@ export function GenerationsIndicator({
         y="15"
         width="4"
         height="4"
-        fill="#EC0648"
+        fill={fillColor}
         fillOpacity="0.08"
       />
       <rect x="10" width="4" height="4" fill="#EC0648" fillOpacity="0.08" />
@@ -227,7 +234,7 @@ export function GenerationsIndicator({
         y="15"
         width="4"
         height="4"
-        fill="#EC0648"
+        fill={fillColor}
         fillOpacity="0.08"
       />
       <rect
@@ -235,7 +242,7 @@ export function GenerationsIndicator({
         y="15"
         width="4"
         height="4"
-        fill="#EC0648"
+        fill={fillColor}
         fillOpacity="0.08"
       />
       <rect
@@ -244,7 +251,7 @@ export function GenerationsIndicator({
         width="4"
         height="4"
         transform="rotate(90 19 5)"
-        fill="#EC0648"
+        fill={fillColor}
         fillOpacity="0.08"
       />
       <rect
@@ -253,7 +260,7 @@ export function GenerationsIndicator({
         width="4"
         height="4"
         transform="rotate(90 4 5)"
-        fill="#EC0648"
+        fill={fillColor}
         fillOpacity="0.08"
       />
       <rect
@@ -262,7 +269,7 @@ export function GenerationsIndicator({
         width="4"
         height="4"
         transform="rotate(90 9 5)"
-        fill="#EC0648"
+        fill={fillColor}
       />
       <rect
         x="9"
@@ -270,7 +277,7 @@ export function GenerationsIndicator({
         width="4"
         height="4"
         transform="rotate(90 9 10)"
-        fill="#EC0648"
+        fill={fillColor}
       />
       <rect
         x="14"
@@ -278,7 +285,7 @@ export function GenerationsIndicator({
         width="4"
         height="4"
         transform="rotate(90 14 10)"
-        fill="#EC0648"
+        fill={fillColor}
       />
       <rect
         x="14"
@@ -286,7 +293,7 @@ export function GenerationsIndicator({
         width="4"
         height="4"
         transform="rotate(90 14 5)"
-        fill="#EC0648"
+        fill={fillColor}
       />
       <rect
         x="19"
@@ -294,7 +301,7 @@ export function GenerationsIndicator({
         width="4"
         height="4"
         transform="rotate(90 19 10)"
-        fill="#EC0648"
+        fill={fillColor}
         fillOpacity="0.08"
       />
       <rect
@@ -303,7 +310,7 @@ export function GenerationsIndicator({
         width="4"
         height="4"
         transform="rotate(90 4 10)"
-        fill="#EC0648"
+        fill={fillColor}
         fillOpacity="0.08"
       />
       <rect
@@ -312,7 +319,7 @@ export function GenerationsIndicator({
         width="4"
         height="4"
         transform="rotate(90 4 15)"
-        fill="#EC0648"
+        fill={fillColor}
         fillOpacity="0.08"
       />
     </motion.svg>,
@@ -333,7 +340,7 @@ export function GenerationsIndicator({
         y="15"
         width="4"
         height="4"
-        fill="#EC0648"
+        fill={fillColor}
         fillOpacity="0.08"
       />
       <rect x="10" width="4" height="4" fill="#EC0648" fillOpacity="0.08" />
@@ -343,7 +350,7 @@ export function GenerationsIndicator({
         y="15"
         width="4"
         height="4"
-        fill="#EC0648"
+        fill={fillColor}
         fillOpacity="0.08"
       />
       <rect
@@ -351,7 +358,7 @@ export function GenerationsIndicator({
         y="15"
         width="4"
         height="4"
-        fill="#EC0648"
+        fill={fillColor}
         fillOpacity="0.08"
       />
       <rect
@@ -360,7 +367,7 @@ export function GenerationsIndicator({
         width="4"
         height="4"
         transform="rotate(90 19 5)"
-        fill="#EC0648"
+        fill={fillColor}
         fillOpacity="0.08"
       />
       <rect
@@ -369,7 +376,7 @@ export function GenerationsIndicator({
         width="4"
         height="4"
         transform="rotate(90 4 5)"
-        fill="#EC0648"
+        fill={fillColor}
         fillOpacity="0.08"
       />
       <rect
@@ -378,7 +385,7 @@ export function GenerationsIndicator({
         width="4"
         height="4"
         transform="rotate(90 9 5)"
-        fill="#EC0648"
+        fill={fillColor}
       />
       <rect
         x="9"
@@ -386,7 +393,7 @@ export function GenerationsIndicator({
         width="4"
         height="4"
         transform="rotate(90 9 10)"
-        fill="#EC0648"
+        fill={fillColor}
       />
       <rect
         x="14"
@@ -394,7 +401,7 @@ export function GenerationsIndicator({
         width="4"
         height="4"
         transform="rotate(90 14 10)"
-        fill="#EC0648"
+        fill={fillColor}
       />
       <rect
         x="14"
@@ -402,7 +409,7 @@ export function GenerationsIndicator({
         width="4"
         height="4"
         transform="rotate(90 14 5)"
-        fill="#EC0648"
+        fill={fillColor}
       />
       <rect
         x="19"
@@ -410,7 +417,7 @@ export function GenerationsIndicator({
         width="4"
         height="4"
         transform="rotate(90 19 10)"
-        fill="#EC0648"
+        fill={fillColor}
         fillOpacity="0.08"
       />
       <rect
@@ -419,7 +426,7 @@ export function GenerationsIndicator({
         width="4"
         height="4"
         transform="rotate(90 4 10)"
-        fill="#EC0648"
+        fill={fillColor}
         fillOpacity="0.08"
       />
       <rect
@@ -428,7 +435,7 @@ export function GenerationsIndicator({
         width="4"
         height="4"
         transform="rotate(90 4 15)"
-        fill="#EC0648"
+        fill={fillColor}
         fillOpacity="0.08"
       />
       <rect x="3" y="3" width="3" height="3" fill="#EC0648" />
@@ -457,7 +464,7 @@ export function GenerationsIndicator({
         y="15"
         width="4"
         height="4"
-        fill="#EC0648"
+        fill={fillColor}
         fillOpacity="0.08"
       />
       <rect
@@ -466,7 +473,7 @@ export function GenerationsIndicator({
         width="4"
         height="4"
         transform="rotate(90 19 5)"
-        fill="#EC0648"
+        fill={fillColor}
       />
       <rect
         x="4"
@@ -474,7 +481,7 @@ export function GenerationsIndicator({
         width="4"
         height="4"
         transform="rotate(90 4 5)"
-        fill="#EC0648"
+        fill={fillColor}
       />
       <rect
         x="9"
@@ -482,7 +489,7 @@ export function GenerationsIndicator({
         width="4"
         height="4"
         transform="rotate(90 9 5)"
-        fill="#EC0648"
+        fill={fillColor}
         fillOpacity="0.08"
       />
       <rect
@@ -491,7 +498,7 @@ export function GenerationsIndicator({
         width="4"
         height="4"
         transform="rotate(90 9 10)"
-        fill="#EC0648"
+        fill={fillColor}
         fillOpacity="0.08"
       />
       <rect
@@ -500,7 +507,7 @@ export function GenerationsIndicator({
         width="4"
         height="4"
         transform="rotate(90 14 10)"
-        fill="#EC0648"
+        fill={fillColor}
         fillOpacity="0.08"
       />
       <rect
@@ -509,7 +516,7 @@ export function GenerationsIndicator({
         width="4"
         height="4"
         transform="rotate(90 14 5)"
-        fill="#EC0648"
+        fill={fillColor}
         fillOpacity="0.08"
       />
       <rect
@@ -518,7 +525,7 @@ export function GenerationsIndicator({
         width="4"
         height="4"
         transform="rotate(90 19 10)"
-        fill="#EC0648"
+        fill={fillColor}
       />
       <rect
         x="4"
@@ -526,7 +533,7 @@ export function GenerationsIndicator({
         width="4"
         height="4"
         transform="rotate(90 4 10)"
-        fill="#EC0648"
+        fill={fillColor}
       />
       <rect
         x="4"
@@ -534,7 +541,7 @@ export function GenerationsIndicator({
         width="4"
         height="4"
         transform="rotate(90 4 15)"
-        fill="#EC0648"
+        fill={fillColor}
         fillOpacity="0.08"
       />
       <rect x="3" y="3" width="3" height="3" fill="#EC0648" />
@@ -557,7 +564,7 @@ export function GenerationsIndicator({
         y="3"
         width="3"
         height="3"
-        fill="#EC0648"
+        fill={fillColor}
         fillOpacity="0.08"
       />
       <rect
@@ -565,7 +572,7 @@ export function GenerationsIndicator({
         y="13"
         width="3"
         height="3"
-        fill="#EC0648"
+        fill={fillColor}
         fillOpacity="0.08"
       />
       <rect
@@ -573,7 +580,7 @@ export function GenerationsIndicator({
         y="13"
         width="3"
         height="3"
-        fill="#EC0648"
+        fill={fillColor}
         fillOpacity="0.08"
       />
       <rect
@@ -581,7 +588,7 @@ export function GenerationsIndicator({
         y="3"
         width="3"
         height="3"
-        fill="#EC0648"
+        fill={fillColor}
         fillOpacity="0.08"
       />
       <rect x="5" width="4" height="4" fill="#EC0648" />
@@ -597,7 +604,7 @@ export function GenerationsIndicator({
         width="4"
         height="4"
         transform="rotate(90 19 5)"
-        fill="#EC0648"
+        fill={fillColor}
       />
       <rect
         x="4"
@@ -605,7 +612,7 @@ export function GenerationsIndicator({
         width="4"
         height="4"
         transform="rotate(90 4 5)"
-        fill="#EC0648"
+        fill={fillColor}
       />
       <rect
         x="9"
@@ -613,7 +620,7 @@ export function GenerationsIndicator({
         width="4"
         height="4"
         transform="rotate(90 9 5)"
-        fill="#EC0648"
+        fill={fillColor}
         fillOpacity="0.08"
       />
       <rect
@@ -622,7 +629,7 @@ export function GenerationsIndicator({
         width="4"
         height="4"
         transform="rotate(90 9 10)"
-        fill="#EC0648"
+        fill={fillColor}
         fillOpacity="0.08"
       />
       <rect
@@ -631,7 +638,7 @@ export function GenerationsIndicator({
         width="4"
         height="4"
         transform="rotate(90 14 10)"
-        fill="#EC0648"
+        fill={fillColor}
         fillOpacity="0.08"
       />
       <rect
@@ -640,7 +647,7 @@ export function GenerationsIndicator({
         width="4"
         height="4"
         transform="rotate(90 14 5)"
-        fill="#EC0648"
+        fill={fillColor}
         fillOpacity="0.08"
       />
       <rect
@@ -649,7 +656,7 @@ export function GenerationsIndicator({
         width="4"
         height="4"
         transform="rotate(90 19 10)"
-        fill="#EC0648"
+        fill={fillColor}
       />
       <rect
         x="4"
@@ -657,7 +664,7 @@ export function GenerationsIndicator({
         width="4"
         height="4"
         transform="rotate(90 4 10)"
-        fill="#EC0648"
+        fill={fillColor}
       />
       <rect
         x="4"
@@ -665,7 +672,7 @@ export function GenerationsIndicator({
         width="4"
         height="4"
         transform="rotate(90 4 15)"
-        fill="#EC0648"
+        fill={fillColor}
       />
     </motion.svg>,
   ];
@@ -681,12 +688,46 @@ export function GenerationsIndicator({
   }, [speed, isAnimating, svgFrames.length]);
 
   return (
-    <div className="flex items-center gap-2 relative p-2 pr-3 bg-card rounded-xl bg-[#EC0648]/15 dark:bg-[#EC0648]/20 text-[#EC0648] dark:text-[#EC0648]">
-      <AnimatePresence mode="wait">{svgFrames[currentFrame]}</AnimatePresence>
-      <span className="font-medium">
-        Generating {activeGenerationsSize} image
-        {activeGenerationsSize && activeGenerationsSize > 1 ? "s" : ""}
-      </span>
+    <div
+      className={cn(
+        "flex items-center gap-2 relative p-2 pr-3 rounded-xl",
+        isSuccess
+          ? "bg-green-500/10 dark:bg-green-500/15 text-green-600 dark:text-green-500"
+          : outputType === "video"
+            ? "bg-purple-500/10 dark:bg-purple-500/15 text-purple-600 dark:text-purple-500"
+            : "bg-[#EC0648]/10 dark:bg-[#EC0648]/15 text-[#EC0648] dark:text-[#EC0648]",
+      )}
+    >
+      {isSuccess ? (
+        <>
+          <svg
+            width="19"
+            height="19"
+            viewBox="0 0 19 19"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M3 10L7 14L16 5"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+          <span className="font-medium">Done</span>
+        </>
+      ) : (
+        <>
+          <AnimatePresence mode="wait">
+            {svgFrames[currentFrame]}
+          </AnimatePresence>
+          <span className="font-medium">
+            Generating {activeGenerationsSize} {outputType}
+            {activeGenerationsSize && activeGenerationsSize > 1 ? "s" : ""}
+          </span>
+        </>
+      )}
     </div>
   );
 }
