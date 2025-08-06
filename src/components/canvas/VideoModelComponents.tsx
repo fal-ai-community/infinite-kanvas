@@ -179,7 +179,7 @@ export const VideoModelOptions: React.FC<VideoModelOptionsProps> = ({
                     </TooltipTrigger>
                     <TooltipContent
                       side="right"
-                      className="max-w-xs bg-popover text-popover-foreground p-2 shadow-lg rounded-md border border-border"
+                      className="max-w-xs bg-popover text-popover-foreground p-2 shadow-lg rounded-xl border border-border"
                     >
                       <p>{option.description}</p>
                     </TooltipContent>
@@ -219,7 +219,7 @@ export const VideoModelOptions: React.FC<VideoModelOptionsProps> = ({
                     </TooltipTrigger>
                     <TooltipContent
                       side="right"
-                      className="max-w-xs bg-popover text-popover-foreground p-2 shadow-lg rounded-md border border-border"
+                      className="max-w-xs bg-popover text-popover-foreground p-2 shadow-lg rounded-xl border border-border"
                     >
                       <p>{option.description}</p>
                     </TooltipContent>
@@ -287,7 +287,7 @@ export const VideoModelOptions: React.FC<VideoModelOptionsProps> = ({
                       </TooltipTrigger>
                       <TooltipContent
                         side="right"
-                        className="max-w-xs bg-popover text-popover-foreground p-2 shadow-lg rounded-md border border-border"
+                        className="max-w-xs bg-popover text-popover-foreground p-2 shadow-lg rounded-xl border border-border"
                       >
                         <p>{option.description}</p>
                       </TooltipContent>
@@ -329,7 +329,7 @@ export const VideoModelOptions: React.FC<VideoModelOptionsProps> = ({
                     </TooltipTrigger>
                     <TooltipContent
                       side="right"
-                      className="max-w-xs bg-popover text-popover-foreground p-2 shadow-lg rounded-md border border-border"
+                      className="max-w-xs bg-popover text-popover-foreground p-2 shadow-lg rounded-xl border border-border"
                     >
                       <p>{option.description}</p>
                     </TooltipContent>
@@ -535,7 +535,7 @@ export const RemoveVideoBackgroundDialog: React.FC<
           <div className="mt-4 space-y-4">
             {/* Preview */}
             <div className="flex justify-center">
-              <div className="w-[360px] h-[180px] border border-border rounded-md overflow-hidden bg-muted/30 relative">
+              <div className="w-[360px] h-[180px] border border-border rounded-xl overflow-hidden bg-muted/30 relative">
                 {isLoadingPreview ? (
                   <div className="w-full h-full flex items-center justify-center">
                     <SpinnerIcon className="h-8 w-8 animate-spin text-muted-foreground" />

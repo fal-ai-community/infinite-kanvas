@@ -114,7 +114,7 @@ export const VideoToVideoDialog: React.FC<VideoToVideoDialogProps> = ({
           <div className="flex gap-4">
             {/* Left column - Video Preview */}
             <div className="w-1/3">
-              <div className="border border-border rounded-md overflow-hidden aspect-square flex items-center justify-center bg-muted/30">
+              <div className="border border-border rounded-xl overflow-hidden aspect-square flex items-center justify-center bg-muted/30">
                 {videoUrl && (
                   <video
                     src={videoUrl}

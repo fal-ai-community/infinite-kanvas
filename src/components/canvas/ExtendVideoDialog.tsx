@@ -149,7 +149,7 @@ export const ExtendVideoDialog: React.FC<ExtendVideoDialogProps> = ({
             {/* Left column - Video Preview with note */}
             <div className="w-1/3">
               <div className="space-y-2">
-                <div className="border border-border rounded-md overflow-hidden aspect-square flex items-center justify-center bg-muted/30">
+                <div className="border border-border rounded-xl overflow-hidden aspect-square flex items-center justify-center bg-muted/30">
                   {lastFrameUrl ? (
                     <img
                       src={lastFrameUrl}

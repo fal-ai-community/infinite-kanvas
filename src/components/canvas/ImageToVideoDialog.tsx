@@ -113,7 +113,7 @@ export const ImageToVideoDialog: React.FC<ImageToVideoDialogProps> = ({
           <div className="flex gap-4">
             {/* Left column - Image Preview */}
             <div className="w-1/3">
-              <div className="border rounded-md overflow-hidden aspect-square flex items-center justify-center">
+              <div className="border rounded-xl overflow-hidden aspect-square flex items-center justify-center">
                 {imageUrl && (
                   <img
                     src={imageUrl}
