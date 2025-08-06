@@ -23,7 +23,7 @@ const buttonVariants = cva(
           "[&>svg]:text-content-lighter",
         ],
         primary: [
-          "bg-primary text-primary-foreground hover:bg-primary/80",
+          "bg-primary text-white hover:bg-primary/80",
           "[&>svg]:text-primary-300",
         ],
         secondary: [

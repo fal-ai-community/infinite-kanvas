@@ -10,7 +10,7 @@ const Card = React.forwardRef<
     ref={ref}
     data-layout={compact ? "compact" : "default"}
     className={cn(
-      "flex flex-col rounded border border-stroke-light bg-surface",
+      "flex flex-col rounded-xl border border-stroke-light bg-surface",
       "group",
       className,
     )}
