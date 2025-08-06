@@ -23,6 +23,7 @@ import {
   MonitorIcon,
   SunIcon,
   MoonIcon,
+  ExternalLink,
 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -3326,6 +3327,20 @@ export default function OverlayPage() {
                       placeholder="Kontext LoRA URL (optional)"
                       style={{ fontSize: "16px" }}
                     />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="flex items-center gap-2"
+                      onClick={() => {
+                        window.open(
+                          "https://huggingface.co/collections/kontext-community/flux-kontext-loras-687e8779f8ed40a611a3925f",
+                          "_blank",
+                        );
+                      }}
+                      title="Browse Kontext LoRAs"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                    </Button>
                     {generationSettings.styleId === "custom" && (
                       <Button
                         variant="ghost"
@@ -3543,7 +3558,7 @@ export default function OverlayPage() {
           )}
 
           {/* {isSaving && (
-            <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-30 bg-background/95 border rounded-md px-3 py-2 flex items-center gap-2 shadow-sm">
+            <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-30 bg-background/95 border rounded-xl px-3 py-2 flex items-center gap-2 shadow-sm">
               <SpinnerIcon className="h-4 w-4 animate-spin text-muted-foreground" />
               <span className="text-sm text-muted-foreground">Saving...</span>
             </div>
@@ -3695,7 +3710,7 @@ export default function OverlayPage() {
               </div>
 
               {customApiKey && (
-                <div className="rounded-md bg-green-500/10 border border-green-500/20 p-3">
+                <div className="rounded-xl bg-green-500/10 border border-green-500/20 p-3">
                   <div className="flex items-center gap-2 text-sm text-green-600">
                     <Check className="h-4 w-4" />
                     <span>Currently using custom API key</span>
