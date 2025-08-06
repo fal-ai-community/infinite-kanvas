@@ -173,14 +173,14 @@ export const ImageToVideoDialog: React.FC<ImageToVideoDialogProps> = ({
             >
               {isConverting ? (
                 <>
-                  <SpinnerIcon className="h-4 w-4 animate-spin" />
-                  Converting...
+                  <SpinnerIcon className="h-4 w-4 animate-spin text-white" />
+                  <span className="text-white">Converting...</span>
                 </>
               ) : (
                 <div className="flex items-center gap-2">
-                  <span>Run</span>
+                  <span className="text-white">Run</span>
                   <span className="flex flex-row space-x-0.5">
-                    <kbd className="flex items-center justify-center tracking-tighter rounded border px-1 font-mono bg-white/10 border-white/10 h-6 min-w-6 text-xs">
+                    <kbd className="flex items-center justify-center text-white tracking-tighter rounded-xl border px-1 font-mono bg-white/10 border-white/10 h-6 min-w-6 text-xs">
                       ↵
                     </kbd>
                   </span>

@@ -122,7 +122,7 @@ export const ExtendVideoDialog: React.FC<ExtendVideoDialogProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[600px] p-5 bg-white">
+      <DialogContent className="sm:max-w-[600px] p-5 bg-background">
         <DialogHeader>
           <DialogTitle>Extend Video</DialogTitle>
           <DialogDescription>
@@ -149,7 +149,7 @@ export const ExtendVideoDialog: React.FC<ExtendVideoDialogProps> = ({
             {/* Left column - Video Preview with note */}
             <div className="w-1/3">
               <div className="space-y-2">
-                <div className="border rounded-md overflow-hidden aspect-square flex items-center justify-center bg-gray-50">
+                <div className="border border-border rounded-md overflow-hidden aspect-square flex items-center justify-center bg-muted/30">
                   {lastFrameUrl ? (
                     <img
                       src={lastFrameUrl}
@@ -167,7 +167,7 @@ export const ExtendVideoDialog: React.FC<ExtendVideoDialogProps> = ({
                     />
                   ) : null}
                 </div>
-                <p className="text-xs text-gray-600 text-center">
+                <p className="text-xs text-muted-foreground text-center">
                   The last frame will be used as the starting point
                 </p>
               </div>
@@ -209,14 +209,14 @@ export const ExtendVideoDialog: React.FC<ExtendVideoDialogProps> = ({
             <Button type="button" onClick={onClose} disabled={isExtending}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isExtending}>
+            <Button type="submit" variant="primary" disabled={isExtending}>
               {isExtending ? (
                 <>
-                  <SpinnerIcon className="mr-2 h-4 w-4 animate-spin" />
-                  Extending...
+                  <SpinnerIcon className="mr-2 h-4 w-4 animate-spin text-white" />
+                  <span className="text-white">Extending...</span>
                 </>
               ) : (
-                "Extend Video"
+                <span className="text-white">Extend Video</span>
               )}
             </Button>
           </DialogFooter>
@@ -232,9 +232,9 @@ export const ExtendVideoDialog: React.FC<ExtendVideoDialogProps> = ({
             />
 
             {/* Panel */}
-            <div className="fixed top-0 right-0 h-full w-96 bg-white shadow-xl z-50 transform transition-transform duration-300 ease-in-out">
+            <div className="fixed top-0 right-0 h-full w-96 bg-background shadow-xl z-50 transform transition-transform duration-300 ease-in-out">
               <div className="h-full flex flex-col">
-                <div className="flex items-center justify-between p-3 border-b bg-gray-50">
+                <div className="flex items-center justify-between p-3 border-b border-border bg-muted/30">
                   <h3 className="font-semibold text-lg">Advanced Options</h3>
                   <Button
                     type="button"

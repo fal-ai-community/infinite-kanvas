@@ -89,7 +89,7 @@ export const VideoToVideoDialog: React.FC<VideoToVideoDialogProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[600px] p-5 bg-white">
+      <DialogContent className="sm:max-w-[600px] p-5 bg-background">
         <DialogHeader>
           <DialogTitle>Video to Video</DialogTitle>
           <DialogDescription>
@@ -114,7 +114,7 @@ export const VideoToVideoDialog: React.FC<VideoToVideoDialogProps> = ({
           <div className="flex gap-4">
             {/* Left column - Video Preview */}
             <div className="w-1/3">
-              <div className="border rounded-md overflow-hidden aspect-square flex items-center justify-center bg-gray-50">
+              <div className="border border-border rounded-md overflow-hidden aspect-square flex items-center justify-center bg-muted/30">
                 {videoUrl && (
                   <video
                     src={videoUrl}
@@ -163,14 +163,14 @@ export const VideoToVideoDialog: React.FC<VideoToVideoDialogProps> = ({
             <Button type="button" onClick={onClose} disabled={isConverting}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isConverting}>
+            <Button type="submit" variant="primary" disabled={isConverting}>
               {isConverting ? (
                 <>
-                  <SpinnerIcon className="mr-2 h-4 w-4 animate-spin" />
-                  Converting...
+                  <SpinnerIcon className="mr-2 h-4 w-4 animate-spin text-white" />
+                  <span className="text-white">Converting...</span>
                 </>
               ) : (
-                "Transform Video"
+                <span className="text-white">Transform Video</span>
               )}
             </Button>
           </DialogFooter>
@@ -186,9 +186,9 @@ export const VideoToVideoDialog: React.FC<VideoToVideoDialogProps> = ({
             />
 
             {/* Panel */}
-            <div className="fixed top-0 right-0 h-full w-96 bg-white shadow-xl z-50 transform transition-transform duration-300 ease-in-out">
+            <div className="fixed top-0 right-0 h-full w-96 bg-background shadow-xl z-50 transform transition-transform duration-300 ease-in-out">
               <div className="h-full flex flex-col">
-                <div className="flex items-center justify-between p-3 border-b bg-gray-50">
+                <div className="flex items-center justify-between p-3 border-b border-border bg-muted/30">
                   <h3 className="font-semibold text-lg">Advanced Options</h3>
                   <Button
                     type="button"

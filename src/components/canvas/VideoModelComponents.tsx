@@ -52,7 +52,7 @@ export const RadioGroupItem = React.forwardRef<
     <RadioGroupPrimitive.Item
       ref={ref}
       className={cn(
-        "aspect-square h-4 w-4 rounded-full border border-gray-300 text-primary shadow focus:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
+        "aspect-square h-4 w-4 rounded-full border border-border text-primary shadow-sm focus:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
         className,
       )}
       {...props}
@@ -85,7 +85,7 @@ export const VideoModelSelector: React.FC<VideoModelSelectorProps> = ({
 
   return (
     <select
-      className={`w-full p-2 border rounded-md text-base focus:outline-none focus:ring-1 safari-select ${className}`}
+      className={`w-full p-2 border border-border bg-background text-foreground rounded-xl text-base focus:outline-none focus:ring-1 focus:ring-ring safari-select ${className}`}
       style={{
         lineHeight: "1.5",
         paddingTop: "0.5rem",
@@ -118,18 +118,18 @@ export const ModelPricingDisplay: React.FC<ModelPricingDisplayProps> = ({
   const pricingMessage = formatPricingMessage(model);
 
   return (
-    <div className={`text-sm text-gray-600 ${className}`}>
+    <div className={`text-sm text-muted-foreground ${className}`}>
       <p
         dangerouslySetInnerHTML={{
           __html: pricingMessage
             .replace(
               /\$[\d.]+/,
-              (match) => `<strong class="text-gray-900">${match}</strong>`,
+              (match) => `<strong class="text-foreground">${match}</strong>`,
             )
             .replace(
               /(\d+) times/,
               (match, num) =>
-                `<strong class="text-gray-900">${num} times</strong>`,
+                `<strong class="text-foreground">${num} times</strong>`,
             ),
         }}
       />
@@ -174,12 +174,12 @@ export const VideoModelOptions: React.FC<VideoModelOptionsProps> = ({
                         type="button"
                         className="rounded-full flex items-center justify-center cursor-pointer"
                       >
-                        <Info className="h-4 w-4 text-gray-400" />
+                        <Info className="h-4 w-4 text-muted-foreground" />
                       </button>
                     </TooltipTrigger>
                     <TooltipContent
                       side="right"
-                      className="max-w-xs bg-white p-2 shadow-lg rounded-md border"
+                      className="max-w-xs bg-popover text-popover-foreground p-2 shadow-lg rounded-md border border-border"
                     >
                       <p>{option.description}</p>
                     </TooltipContent>
@@ -214,12 +214,12 @@ export const VideoModelOptions: React.FC<VideoModelOptionsProps> = ({
                         type="button"
                         className="rounded-full flex items-center justify-center cursor-pointer"
                       >
-                        <Info className="h-4 w-4 text-gray-400" />
+                        <Info className="h-4 w-4 text-muted-foreground" />
                       </button>
                     </TooltipTrigger>
                     <TooltipContent
                       side="right"
-                      className="max-w-xs bg-white p-2 shadow-lg rounded-md border"
+                      className="max-w-xs bg-popover text-popover-foreground p-2 shadow-lg rounded-md border border-border"
                     >
                       <p>{option.description}</p>
                     </TooltipContent>
@@ -230,7 +230,7 @@ export const VideoModelOptions: React.FC<VideoModelOptionsProps> = ({
             <div className="relative mt-1">
               <select
                 id={key}
-                className="w-full p-2 border rounded-md appearance-none focus:outline-none focus:ring-1 focus:ring-blue-500 safari-select"
+                className="w-full p-2 border border-border bg-background text-foreground rounded-xl appearance-none focus:outline-none focus:ring-1 focus:ring-ring safari-select"
                 style={{
                   lineHeight: "1.5",
                   paddingTop: "0.5rem",
@@ -248,7 +248,7 @@ export const VideoModelOptions: React.FC<VideoModelOptionsProps> = ({
               </select>
               <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
                 <svg
-                  className="h-4 w-4 text-gray-400"
+                  className="h-4 w-4 text-muted-foreground"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -282,12 +282,12 @@ export const VideoModelOptions: React.FC<VideoModelOptionsProps> = ({
                           type="button"
                           className="rounded-full flex items-center justify-center cursor-pointer"
                         >
-                          <Info className="h-4 w-4 text-gray-400" />
+                          <Info className="h-4 w-4 text-muted-foreground" />
                         </button>
                       </TooltipTrigger>
                       <TooltipContent
                         side="right"
-                        className="max-w-xs bg-white p-2 shadow-lg rounded-md border"
+                        className="max-w-xs bg-popover text-popover-foreground p-2 shadow-lg rounded-md border border-border"
                       >
                         <p>{option.description}</p>
                       </TooltipContent>
@@ -324,12 +324,12 @@ export const VideoModelOptions: React.FC<VideoModelOptionsProps> = ({
                         type="button"
                         className="rounded-full flex items-center justify-center cursor-pointer"
                       >
-                        <Info className="h-4 w-4 text-gray-400" />
+                        <Info className="h-4 w-4 text-muted-foreground" />
                       </button>
                     </TooltipTrigger>
                     <TooltipContent
                       side="right"
-                      className="max-w-xs bg-white p-2 shadow-lg rounded-md border"
+                      className="max-w-xs bg-popover text-popover-foreground p-2 shadow-lg rounded-md border border-border"
                     >
                       <p>{option.description}</p>
                     </TooltipContent>
@@ -508,10 +508,10 @@ export const RemoveVideoBackgroundDialog: React.FC<
 
   // Define color mappings
   const colorMap: Record<string, string> = {
-    transparent: "bg-gray-100 border-2 border-dashed border-gray-300",
+    transparent: "bg-muted/50 border-2 border-dashed border-border",
     black: "bg-black",
-    white: "bg-white border",
-    gray: "bg-gray-500",
+    white: "bg-background border border-border",
+    gray: "bg-muted-foreground",
     red: "bg-red-500",
     green: "bg-green-500",
     blue: "bg-blue-500",
@@ -535,10 +535,10 @@ export const RemoveVideoBackgroundDialog: React.FC<
           <div className="mt-4 space-y-4">
             {/* Preview */}
             <div className="flex justify-center">
-              <div className="w-[360px] h-[180px] border rounded-md overflow-hidden bg-gray-50 relative">
+              <div className="w-[360px] h-[180px] border border-border rounded-md overflow-hidden bg-muted/30 relative">
                 {isLoadingPreview ? (
                   <div className="w-full h-full flex items-center justify-center">
-                    <SpinnerIcon className="h-8 w-8 animate-spin text-gray-400" />
+                    <SpinnerIcon className="h-8 w-8 animate-spin text-muted-foreground" />
                   </div>
                 ) : previewUrl ? (
                   <img
@@ -548,7 +548,7 @@ export const RemoveVideoBackgroundDialog: React.FC<
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
-                    <span className="text-gray-400 text-sm">
+                    <span className="text-muted-foreground text-sm">
                       No preview available
                     </span>
                   </div>
@@ -598,7 +598,7 @@ export const RemoveVideoBackgroundDialog: React.FC<
               variant="default"
               onClick={onClose}
               disabled={isProcessing}
-              className="border border-gray-300 bg-white hover:bg-gray-50"
+              className="border border-border bg-background hover:bg-muted/50"
             >
               Cancel
             </Button>
@@ -617,10 +617,10 @@ export const RemoveVideoBackgroundDialog: React.FC<
                 <div className="flex items-center gap-2">
                   <span>Run</span>
                   <span className="flex flex-row space-x-0.5">
-                    <kbd className="flex items-center justify-center tracking-tighter rounded border px-1 font-mono bg-white/10 border-white/10 h-6 min-w-6 text-xs">
+                    <kbd className="flex items-center justify-center tracking-tighter rounded-xl border px-1 font-mono bg-white/10 border-white/10 h-6 min-w-6 text-xs">
                       ⌘
                     </kbd>
-                    <kbd className="flex items-center justify-center tracking-tighter rounded border px-1 font-mono bg-white/10 border-white/10 h-6 min-w-6 text-xs">
+                    <kbd className="flex items-center justify-center tracking-tighter rounded-xl border px-1 font-mono bg-white/10 border-white/10 h-6 min-w-6 text-xs">
                       ↵
                     </kbd>
                   </span>
