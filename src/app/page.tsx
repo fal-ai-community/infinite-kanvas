@@ -5,6 +5,7 @@ import { useState, useCallback } from "react";
 import { Stage, Layer, Rect, Group, Line } from "react-konva";
 import Konva from "konva";
 import { canvasStorage, type CanvasState } from "@/lib/storage";
+import { motion, AnimatePresence } from "framer-motion";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -213,6 +214,7 @@ export default function OverlayPage() {
   const [customApiKey, setCustomApiKey] = useState<string>("");
   const [tempApiKey, setTempApiKey] = useState<string>("");
   const [_, setIsSaving] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
 
   // Touch event states for mobile
   const [lastTouchDistance, setLastTouchDistance] = useState<number | null>(
@@ -223,6 +225,41 @@ export default function OverlayPage() {
     y: number;
   } | null>(null);
   const [isTouchingImage, setIsTouchingImage] = useState(false);
+
+  // Track when generation completes
+  const [previousGenerationCount, setPreviousGenerationCount] = useState(0);
+
+  useEffect(() => {
+    const currentCount =
+      activeGenerations.size +
+      activeVideoGenerations.size +
+      (isGenerating ? 1 : 0) +
+      (isRemovingVideoBackground ? 1 : 0) +
+      (isIsolating ? 1 : 0) +
+      (isExtendingVideo ? 1 : 0) +
+      (isTransformingVideo ? 1 : 0);
+
+    // If we went from having generations to having none, show success
+    if (previousGenerationCount > 0 && currentCount === 0) {
+      setShowSuccess(true);
+      // Hide success after 2 seconds
+      const timeout = setTimeout(() => {
+        setShowSuccess(false);
+      }, 2000);
+      return () => clearTimeout(timeout);
+    }
+
+    setPreviousGenerationCount(currentCount);
+  }, [
+    activeGenerations.size,
+    activeVideoGenerations.size,
+    isGenerating,
+    isRemovingVideoBackground,
+    isIsolating,
+    isExtendingVideo,
+    isTransformingVideo,
+    previousGenerationCount,
+  ]);
 
   // Create FAL client instance with proxy
   const falClient = useFalClient(customApiKey);
@@ -284,6 +321,9 @@ export default function OverlayPage() {
         return newMap;
       });
 
+      // Clear the converting flag since it's now tracked in activeVideoGenerations
+      setIsConvertingToVideo(false);
+
       // Close the dialog
       setIsImageToVideoDialogOpen(false);
 
@@ -296,22 +336,12 @@ export default function OverlayPage() {
         modelName = model.name;
       }
 
-      // Create a persistent toast that will stay visible until the conversion completes
-      const toastId = toast({
-        title: `Converting image to video (${modelName} - ${settings.resolution || "Default"})`,
-        description: "This may take a minute...",
-        duration: Infinity, // Make the toast stay until manually dismissed
-      }).id;
-
       // Store the toast ID with the generation for later reference
       setActiveVideoGenerations((prev) => {
         const newMap = new Map(prev);
         const generation = newMap.get(generationId);
         if (generation) {
-          newMap.set(generationId, {
-            ...generation,
-            toastId,
-          });
+          newMap.set(generationId, generation);
         }
         return newMap;
       });
@@ -3037,15 +3067,59 @@ export default function OverlayPage() {
             >
               <div className="flex flex-col gap-3 px-3 md:px-3 py-2 md:py-3 relative">
                 {/* Active generations indicator */}
-                {activeGenerations.size > 0 && (
-                  <div className="absolute z-50 -top-16 left-1/2 transform -translate-x-1/2 bg-background/90 backdrop-blur-sm rounded-xl">
-                    <GenerationsIndicator
-                      isAnimating={activeGenerations.size > 0}
-                      className="w-5 h-5"
-                      activeGenerationsSize={activeGenerations.size}
-                    />
-                  </div>
-                )}
+                <AnimatePresence mode="wait">
+                  {(activeGenerations.size > 0 ||
+                    activeVideoGenerations.size > 0 ||
+                    isGenerating ||
+                    isRemovingVideoBackground ||
+                    isIsolating ||
+                    isExtendingVideo ||
+                    isTransformingVideo ||
+                    showSuccess) && (
+                    <motion.div
+                      key={showSuccess ? "success" : "generating"}
+                      initial={{ opacity: 0, y: -10, scale: 0.9, x: "-50%" }}
+                      animate={{ opacity: 1, y: 0, scale: 1, x: "-50%" }}
+                      exit={{ opacity: 0, y: -10, scale: 0.9, x: "-50%" }}
+                      transition={{ duration: 0.2, ease: "easeInOut" }}
+                      className={cn(
+                        "absolute z-50 -top-16 left-1/2",
+                        "rounded-xl",
+                        showSuccess
+                          ? "shadow-[0_0_0_1px_rgba(34,197,94,0.2),0_4px_8px_-0.5px_rgba(34,197,94,0.08),0_8px_16px_-2px_rgba(34,197,94,0.04)] dark:shadow-none dark:border dark:border-green-500/30"
+                          : activeVideoGenerations.size > 0 ||
+                              isRemovingVideoBackground ||
+                              isExtendingVideo ||
+                              isTransformingVideo
+                            ? "shadow-[0_0_0_1px_rgba(168,85,247,0.2),0_4px_8px_-0.5px_rgba(168,85,247,0.08),0_8px_16px_-2px_rgba(168,85,247,0.04)] dark:shadow-none dark:border dark:border-purple-500/30"
+                            : "shadow-[0_0_0_1px_rgba(236,6,72,0.2),0_4px_8px_-0.5px_rgba(236,6,72,0.08),0_8px_16px_-2px_rgba(236,6,72,0.04)] dark:shadow-none dark:border dark:border-[#EC0648]/30",
+                      )}
+                    >
+                      <GenerationsIndicator
+                        isAnimating={!showSuccess}
+                        isSuccess={showSuccess}
+                        className="w-5 h-5"
+                        activeGenerationsSize={
+                          activeGenerations.size +
+                          activeVideoGenerations.size +
+                          (isGenerating ? 1 : 0) +
+                          (isRemovingVideoBackground ? 1 : 0) +
+                          (isIsolating ? 1 : 0) +
+                          (isExtendingVideo ? 1 : 0) +
+                          (isTransformingVideo ? 1 : 0)
+                        }
+                        outputType={
+                          activeVideoGenerations.size > 0 ||
+                          isRemovingVideoBackground ||
+                          isExtendingVideo ||
+                          isTransformingVideo
+                            ? "video"
+                            : "image"
+                        }
+                      />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
                 {/* Action buttons row */}
                 <div className="flex items-center gap-1">
@@ -3081,16 +3155,30 @@ export default function OverlayPage() {
                     </div>
 
                     {/* Mode indicator badge */}
-                    <div className="text-[10px] font-medium pointer-events-none">
+                    <div
+                      className={cn(
+                        "h-9 rounded-xl overflow-clip flex items-center px-3",
+                        "pointer-events-none select-none",
+                        selectedIds.length > 0
+                          ? "bg-blue-500/10 dark:bg-blue-500/15 shadow-[0_0_0_1px_rgba(59,130,246,0.2),0_4px_8px_-0.5px_rgba(59,130,246,0.08),0_8px_16px_-2px_rgba(59,130,246,0.04)] dark:shadow-none dark:border dark:border-blue-500/30"
+                          : "bg-orange-500/10 dark:bg-orange-500/15 shadow-[0_0_0_1px_rgba(249,115,22,0.2),0_4px_8px_-0.5px_rgba(249,115,22,0.08),0_8px_16px_-2px_rgba(249,115,22,0.04)] dark:shadow-none dark:border dark:border-orange-500/30",
+                      )}
+                    >
                       {selectedIds.length > 0 ? (
-                        <div className="flex items-center gap-1.5 bg-blue-500/10 text-blue-600 px-2.5 py-1.5 rounded-lg">
-                          <ImageIcon className="w-3 h-3" />
-                          <span>Image to Image</span>
+                        <div className="flex items-center gap-2 text-xs font-medium">
+                          <ImageIcon className="w-4 h-4 text-blue-600 dark:text-blue-500" />
+                          <span className="text-blue-600 dark:text-blue-500">
+                            Image to Image
+                          </span>
                         </div>
                       ) : (
-                        <div className="flex items-center gap-1.5 bg-orange-500/10 text-orange-600 px-2.5 py-1.5 rounded-lg">
-                          <span className="font-bold">T</span>
-                          <span>Text to Image</span>
+                        <div className="flex items-center gap-2 text-xs font-medium">
+                          <span className="text-orange-600 dark:text-orange-500 font-bold text-sm">
+                            T
+                          </span>
+                          <span className="text-orange-600 dark:text-orange-500">
+                            Text to Image
+                          </span>
                         </div>
                       )}
                     </div>
@@ -3293,7 +3381,7 @@ export default function OverlayPage() {
                           <img
                             src={selectedModel?.imageSrc}
                             alt={selectedModel?.name}
-                            className="w-5 h-5 rounded object-cover"
+                            className="w-5 h-5 rounded-xl object-cover"
                           />
                           <span className="text-sm">
                             {selectedModel?.name || "Simpsons Style"}
@@ -3416,9 +3504,9 @@ export default function OverlayPage() {
                             )}
                           >
                             {isGenerating ? (
-                              <SpinnerIcon className="h-4 w-4 animate-spin" />
+                              <SpinnerIcon className="h-4 w-4 animate-spin text-white" />
                             ) : (
-                              <PlayIcon className="h-4 w-4" />
+                              <PlayIcon className="h-4 w-4 text-white fill-white" />
                             )}
                           </Button>
                         </TooltipTrigger>
