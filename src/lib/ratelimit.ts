@@ -46,7 +46,9 @@ export async function shouldLimitRequest(
   ip: string,
   keyPrefix?: string,
 ): Promise<LimitResult> {
-  console.log(`[DEBUG] Checking rate limit for IP: ${ip}${keyPrefix ? ` with prefix: ${keyPrefix}` : ''}`);
+  console.log(
+    `[DEBUG] Checking rate limit for IP: ${ip}${keyPrefix ? ` with prefix: ${keyPrefix}` : ""}`,
+  );
 
   if (!IS_RATE_LIMITER_ENABLED) {
     console.log(`[DEBUG] Rate limiter disabled, allowing request`);
