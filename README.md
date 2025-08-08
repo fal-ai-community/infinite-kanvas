@@ -45,9 +45,9 @@ The application implements a three-tier rate limiting system for users without A
 
 ```typescript
 const limiter = {
-  perMinute: createRateLimiter(10, "60 s"), // 10 requests per minute
-  perHour: createRateLimiter(30, "60 m"), // 30 requests per hour
-  perDay: createRateLimiter(100, "24 h"), // 100 requests per day
+  perMinute: createRateLimiter(5, "60 s"), // 10 requests per minute
+  perHour: createRateLimiter(15, "60 m"), // 30 requests per hour
+  perDay: createRateLimiter(50, "24 h"), // 100 requests per day
 };
 ```
 

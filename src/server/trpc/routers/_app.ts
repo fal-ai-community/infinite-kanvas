@@ -27,14 +27,14 @@ async function getFalClient(
   // Different rate limits for video vs regular operations
   const limiter = isVideo
     ? {
-        perMinute: createRateLimiter(1, "60 s"),
-        perHour: createRateLimiter(10, "60 m"),
-        perDay: createRateLimiter(50, "24 h"),
+        perMinute: createRateLimiter(2, "60 s"),
+        perHour: createRateLimiter(4, "60 m"),
+        perDay: createRateLimiter(8, "24 h"),
       }
     : {
-        perMinute: createRateLimiter(50, "60 s"),
-        perHour: createRateLimiter(250, "60 m"),
-        perDay: createRateLimiter(500, "24 h"),
+        perMinute: createRateLimiter(5, "60 s"),
+        perHour: createRateLimiter(15, "60 m"),
+        perDay: createRateLimiter(50, "24 h"),
       };
 
   const ip =

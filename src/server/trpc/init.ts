@@ -25,9 +25,9 @@ const t = initTRPC.context<Context>().create({
 
 // Create rate limiter for tRPC endpoints
 const trpcLimiter: RateLimiter = {
-  perMinute: createRateLimiter(50, "60 s"),
-  perHour: createRateLimiter(250, "60 m"),
-  perDay: createRateLimiter(500, "24 h"),
+  perMinute: createRateLimiter(5, "60 s"),
+  perHour: createRateLimiter(15, "60 m"),
+  perDay: createRateLimiter(50, "24 h"),
 };
 
 // Rate limiting middleware
