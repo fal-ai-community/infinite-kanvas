@@ -152,11 +152,6 @@ export const handleRun = async (deps: GenerationHandlerDeps) => {
   // If no images are selected, do text-to-image generation
   if (selectedImages.length === 0) {
     try {
-      toast({
-        title: "Generating image...",
-        description: "Creating image from text prompt",
-      });
-
       const result = await generateTextToImage({
         prompt: generationSettings.prompt,
         loraUrl: generationSettings.loraUrl || undefined,
@@ -193,11 +188,6 @@ export const handleRun = async (deps: GenerationHandlerDeps) => {
 
       // Select the new image
       setSelectedIds([id]);
-
-      toast({
-        title: "Success",
-        description: "Image generated successfully",
-      });
     } catch (error) {
       console.error("Error generating image:", error);
       toast({

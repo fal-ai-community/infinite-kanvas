@@ -1,5 +1,6 @@
 import React from "react";
 import { Group, Line } from "react-konva";
+import { useTheme } from "next-themes";
 
 interface CanvasGridProps {
   viewport: {
@@ -19,8 +20,13 @@ export const CanvasGrid: React.FC<CanvasGridProps> = ({
   viewport,
   canvasSize,
   gridSize = 50,
-  gridColor = "#f0f0f0",
+  gridColor,
 }) => {
+  const { resolvedTheme } = useTheme();
+
+  // Set grid color based on theme
+  const effectiveGridColor =
+    gridColor || (resolvedTheme === "dark" ? "#2a2a2a" : "#f0f0f0");
   const lines = [];
 
   // Calculate visible area in canvas coordinates
@@ -39,7 +45,7 @@ export const CanvasGrid: React.FC<CanvasGridProps> = ({
       <Line
         key={`v-${x}`}
         points={[x, startY, x, endY]}
-        stroke={gridColor}
+        stroke={effectiveGridColor}
         strokeWidth={1}
       />,
     );
@@ -51,7 +57,7 @@ export const CanvasGrid: React.FC<CanvasGridProps> = ({
       <Line
         key={`h-${y}`}
         points={[startX, y, endX, y]}
-        stroke={gridColor}
+        stroke={effectiveGridColor}
         strokeWidth={1}
       />,
     );

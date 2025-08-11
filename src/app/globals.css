@@ -4,7 +4,7 @@
 
 @layer base {
   :root {
-    --background: 0.9578 0.0058 264.5321;
+    --background: 1 0 0;
     --foreground: 0.4355 0.043 279.325;
     --card: 1 0 0;
     --card-foreground: 0.4355 0.043 279.325;
@@ -288,7 +288,7 @@ h6 {
     padding-bottom: 0.5rem !important;
     height: auto !important;
   }
-  
+
   /* Fix option text in Safari dropdowns */
   select.safari-select option {
     line-height: 1.5 !important;

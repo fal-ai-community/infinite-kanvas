@@ -60,11 +60,13 @@ export const MobileToolbar: React.FC<MobileToolbarProps> = ({
   return (
     <div
       className={cn(
-        "flex items-center flex-col gap-1 md:hidden bg-background/80 border rounded p-1",
+        "flex items-center flex-col gap-1 md:hidden bg-background/80 rounded-2xl p-1 bg-card",
         "transition-transform duration-300 ease-in-out",
         selectedIds.length > 0
           ? "translate-x-0"
           : "-translate-x-[calc(100%+1rem)]",
+        "shadow-[0_0_0_1px_rgba(50,50,50,0.12),0_4px_8px_-0.5px_rgba(50,50,50,0.04),0_8px_16px_-2px_rgba(50,50,50,0.02)]",
+        "dark:shadow-none dark:border dark:border-border",
       )}
     >
       <Button
@@ -76,9 +78,9 @@ export const MobileToolbar: React.FC<MobileToolbarProps> = ({
         title="Run"
       >
         {isGenerating ? (
-          <SpinnerIcon className="h-12 w-12 animate-spin" />
+          <SpinnerIcon className="h-12 w-12 animate-spin text-content" />
         ) : (
-          <Play className="h-12 w-12" />
+          <Play className="h-12 w-12 text-content" />
         )}
       </Button>
 
@@ -147,7 +149,7 @@ export const MobileToolbar: React.FC<MobileToolbarProps> = ({
           sideOffset={10}
           alignOffset={-4}
           align="start"
-          className="w-48 space-y-1 bg-background/80 border rounded p-1"
+          className="w-48 space-y-1 bg-background/80 border rounded-xl p-1"
         >
           <DropdownMenuItem asChild>
             <Button

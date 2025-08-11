@@ -65,7 +65,7 @@ export const VideoOverlays: React.FC<VideoOverlaysProps> = ({
               left: video.x * viewport.scale + viewport.x,
               width: video.width * viewport.scale,
               height: video.height * viewport.scale,
-              zIndex: 30,
+              zIndex: 10,
               objectFit: "cover",
               pointerEvents: selectedIds.includes(video.id) ? "auto" : "none",
               border: selectedIds.includes(video.id)
@@ -198,7 +198,7 @@ export const VideoOverlays: React.FC<VideoOverlaysProps> = ({
                 top: video.y * viewport.scale + viewport.y + 5 * viewport.scale,
                 left:
                   video.x * viewport.scale + viewport.x + 5 * viewport.scale,
-                zIndex: 40,
+                zIndex: 10,
                 pointerEvents: "none",
                 visibility: video.isLoaded ? "visible" : "hidden",
                 display: video.isLoaded ? "block" : "none",

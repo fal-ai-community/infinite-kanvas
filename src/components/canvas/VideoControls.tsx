@@ -171,7 +171,7 @@ export const VideoControls: React.FC<VideoControlsProps> = ({
 
   return (
     <div
-      className={`flex flex-col bg-white border rounded shadow p-1.5 z-[60] ${className}`}
+      className={`flex flex-col bg-background border border-border rounded-lg shadow-sm dark:shadow-none p-1.5 z-[60] ${className}`}
       onClick={(e) => e.stopPropagation()} // Prevent clicks from bubbling to canvas
     >
       {/* Seek bar with time display */}
@@ -179,7 +179,7 @@ export const VideoControls: React.FC<VideoControlsProps> = ({
         {/* Seek bar */}
         <div
           ref={seekBarRef}
-          className="relative h-1.5 bg-gray-200 rounded-full cursor-pointer"
+          className="relative h-1.5 bg-muted rounded-full cursor-pointer"
           onClick={handleSeekBarClick}
           onMouseDown={handleSeekBarDragStart}
           onMouseMove={handleSeekBarDragMove}
@@ -193,7 +193,7 @@ export const VideoControls: React.FC<VideoControlsProps> = ({
         </div>
 
         {/* Time display split under seek bar */}
-        <div className="flex justify-between text-[10px] text-gray-600 mt-0.5 px-0.5">
+        <div className="flex justify-between text-[10px] text-muted-foreground mt-0.5 px-0.5">
           <span>{formatTime(currentTime)}</span>
           <span>{formatTime(video.duration)}</span>
         </div>

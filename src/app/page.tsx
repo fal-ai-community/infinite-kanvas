@@ -5,21 +5,25 @@ import { useState, useCallback } from "react";
 import { Stage, Layer, Rect, Group, Line } from "react-konva";
 import Konva from "konva";
 import { canvasStorage, type CanvasState } from "@/lib/storage";
+import { motion, AnimatePresence } from "framer-motion";
 
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import {
   X,
   ChevronDown,
   Check,
-  Upload,
-  Filter,
   Plus,
   ImageIcon,
   Trash2,
   Undo,
   Redo,
-  Key,
-  Star,
+  SlidersHorizontal,
+  PlayIcon,
+  Paperclip,
+  MonitorIcon,
+  SunIcon,
+  MoonIcon,
+  ExternalLink,
 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -31,14 +35,12 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuTrigger,
-  ContextMenuSub,
-  ContextMenuSubTrigger,
-  ContextMenuSubContent,
-} from "@/components/ui/context-menu";
+  TooltipProvider,
+  TooltipTrigger,
+  TooltipContent,
+  Tooltip,
+} from "@/components/ui/tooltip";
+import { ContextMenu, ContextMenuTrigger } from "@/components/ui/context-menu";
 import {
   Dialog,
   DialogContent,
@@ -48,7 +50,6 @@ import {
 } from "@/components/ui/dialog";
 import { styleModels } from "@/lib/models";
 import { useToast } from "@/hooks/use-toast";
-import { LogoIcon } from "@/components/icons/logo";
 import { createFalClient } from "@fal-ai/client";
 
 // Import extracted components
@@ -91,7 +92,9 @@ import { SelectionBoxComponent } from "@/components/canvas/SelectionBox";
 import { MiniMap } from "@/components/canvas/MiniMap";
 import { ZoomControls } from "@/components/canvas/ZoomControls";
 import { MobileToolbar } from "@/components/canvas/MobileToolbar";
+import { PoweredByFalBadge } from "@/components/canvas/PoweredByFalBadge";
 import { CanvasContextMenu } from "@/components/canvas/CanvasContextMenu";
+import { useTheme } from "next-themes";
 import { VideoOverlays } from "@/components/canvas/VideoOverlays";
 import { DimensionDisplay } from "@/components/canvas/DimensionDisplay";
 import Image from "next/image";
@@ -103,8 +106,19 @@ import {
   generateImage,
 } from "@/lib/handlers/generation-handler";
 import { handleRemoveBackground as handleRemoveBackgroundHandler } from "@/lib/handlers/background-handler";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { GithubBadge } from "@/components/canvas/GithubBadge";
+import { GenerationsIndicator } from "@/components/generations-indicator";
 
 export default function OverlayPage() {
+  const { theme, setTheme } = useTheme();
   const [images, setImages] = useState<PlacedImage[]>([]);
   const [videos, setVideos] = useState<PlacedVideo[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -121,6 +135,9 @@ export default function OverlayPage() {
       loraUrl: simpsonsStyle?.loraUrl || "",
       styleId: simpsonsStyle?.id || "simpsons",
     });
+  const [previousStyleId, setPreviousStyleId] = useState<string>(
+    simpsonsStyle?.id || "simpsons",
+  );
   const [isGenerating, setIsGenerating] = useState(false);
   const [activeGenerations, setActiveGenerations] = useState<
     Map<string, ActiveGeneration>
@@ -163,6 +180,9 @@ export default function OverlayPage() {
   const [isolateTarget, setIsolateTarget] = useState<string | null>(null);
   const [isolateInputValue, setIsolateInputValue] = useState("");
   const [isIsolating, setIsIsolating] = useState(false);
+  const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false);
+  const [showGrid, setShowGrid] = useState(true);
+  const [showMinimap, setShowMinimap] = useState(true);
   const [isStyleDialogOpen, setIsStyleDialogOpen] = useState(false);
   const [isApiKeyDialogOpen, setIsApiKeyDialogOpen] = useState(false);
   const [isImageToVideoDialogOpen, setIsImageToVideoDialogOpen] =
@@ -195,6 +215,7 @@ export default function OverlayPage() {
   const [customApiKey, setCustomApiKey] = useState<string>("");
   const [tempApiKey, setTempApiKey] = useState<string>("");
   const [_, setIsSaving] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
 
   // Touch event states for mobile
   const [lastTouchDistance, setLastTouchDistance] = useState<number | null>(
@@ -205,6 +226,41 @@ export default function OverlayPage() {
     y: number;
   } | null>(null);
   const [isTouchingImage, setIsTouchingImage] = useState(false);
+
+  // Track when generation completes
+  const [previousGenerationCount, setPreviousGenerationCount] = useState(0);
+
+  useEffect(() => {
+    const currentCount =
+      activeGenerations.size +
+      activeVideoGenerations.size +
+      (isGenerating ? 1 : 0) +
+      (isRemovingVideoBackground ? 1 : 0) +
+      (isIsolating ? 1 : 0) +
+      (isExtendingVideo ? 1 : 0) +
+      (isTransformingVideo ? 1 : 0);
+
+    // If we went from having generations to having none, show success
+    if (previousGenerationCount > 0 && currentCount === 0) {
+      setShowSuccess(true);
+      // Hide success after 2 seconds
+      const timeout = setTimeout(() => {
+        setShowSuccess(false);
+      }, 2000);
+      return () => clearTimeout(timeout);
+    }
+
+    setPreviousGenerationCount(currentCount);
+  }, [
+    activeGenerations.size,
+    activeVideoGenerations.size,
+    isGenerating,
+    isRemovingVideoBackground,
+    isIsolating,
+    isExtendingVideo,
+    isTransformingVideo,
+    previousGenerationCount,
+  ]);
 
   // Create FAL client instance with proxy
   const falClient = useFalClient(customApiKey);
@@ -266,6 +322,9 @@ export default function OverlayPage() {
         return newMap;
       });
 
+      // Clear the converting flag since it's now tracked in activeVideoGenerations
+      setIsConvertingToVideo(false);
+
       // Close the dialog
       setIsImageToVideoDialogOpen(false);
 
@@ -278,22 +337,12 @@ export default function OverlayPage() {
         modelName = model.name;
       }
 
-      // Create a persistent toast that will stay visible until the conversion completes
-      const toastId = toast({
-        title: `Converting image to video (${modelName} - ${settings.resolution || "Default"})`,
-        description: "This may take a minute...",
-        duration: Infinity, // Make the toast stay until manually dismissed
-      }).id;
-
       // Store the toast ID with the generation for later reference
       setActiveVideoGenerations((prev) => {
         const newMap = new Map(prev);
         const generation = newMap.get(generationId);
         if (generation) {
-          newMap.set(generationId, {
-            ...generation,
-            toastId,
-          });
+          newMap.set(generationId, generation);
         }
         return newMap;
       });
@@ -887,6 +936,44 @@ export default function OverlayPage() {
       setTempApiKey(savedKey);
     }
   }, []);
+
+  // Load grid setting from localStorage on mount
+  useEffect(() => {
+    const savedShowGrid = localStorage.getItem("showGrid");
+    if (savedShowGrid !== null) {
+      setShowGrid(savedShowGrid === "true");
+    }
+  }, []);
+
+  // Load minimap setting from localStorage on mount
+  useEffect(() => {
+    const savedShowMinimap = localStorage.getItem("showMinimap");
+    if (savedShowMinimap !== null) {
+      setShowMinimap(savedShowMinimap === "true");
+    }
+  }, []);
+
+  // Save grid setting to localStorage when it changes
+  useEffect(() => {
+    localStorage.setItem("showGrid", showGrid.toString());
+  }, [showGrid]);
+
+  // Save minimap setting to localStorage when it changes
+  useEffect(() => {
+    localStorage.setItem("showMinimap", showMinimap.toString());
+  }, [showMinimap]);
+
+  // Track previous style when changing styles (but not when reverting from custom)
+  useEffect(() => {
+    const currentStyleId = generationSettings.styleId;
+    if (
+      currentStyleId &&
+      currentStyleId !== "custom" &&
+      currentStyleId !== previousStyleId
+    ) {
+      setPreviousStyleId(currentStyleId);
+    }
+  }, [generationSettings.styleId, previousStyleId]);
 
   // Save API key to localStorage when it changes
   useEffect(() => {
@@ -2536,7 +2623,7 @@ export default function OverlayPage() {
           >
             <ContextMenuTrigger asChild>
               <div
-                className="relative bg-white overflow-hidden w-full h-full"
+                className="relative bg-background overflow-hidden w-full h-full"
                 style={{
                   // Use consistent style property names to avoid hydration errors
                   height: `${canvasSize.height}px`,
@@ -2642,7 +2729,12 @@ export default function OverlayPage() {
                   >
                     <Layer>
                       {/* Grid background */}
-                      <CanvasGrid viewport={viewport} canvasSize={canvasSize} />
+                      {showGrid && (
+                        <CanvasGrid
+                          viewport={viewport}
+                          canvasSize={canvasSize}
+                        />
+                      )}
 
                       {/* Selection box */}
                       <SelectionBoxComponent selectionBox={selectionBox} />
@@ -2937,11 +3029,11 @@ export default function OverlayPage() {
 
           <div className="absolute top-4 left-4 z-20 flex flex-col items-start gap-2">
             {/* Fal logo */}
-            <div className="border bg-background/80 p-2 flex flex-row rounded gap-2 items-center">
+            <div className="md:hidden border bg-background/80 py-2 px-3 flex flex-row rounded-xl gap-2 items-center">
               <Link
                 href="https://fal.ai"
                 target="_blank"
-                className="block hover:opacity-80 transition-opacity"
+                className="block transition-opacity"
               >
                 <Logo className="h-8 w-16 text-foreground" />
               </Link>
@@ -2966,179 +3058,191 @@ export default function OverlayPage() {
             />
           </div>
 
-          <div className="fixed bottom-0 left-0 right-0 md:absolute md:bottom-4 md:left-1/2 md:transform md:-translate-x-1/2 z-20 p-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] md:p-0 md:pb-0 md:max-w-[600px]">
-            <div className="bg-card/95 backdrop-blur-sm border border-border rounded shadow">
-              <div className="flex flex-col gap-3 px-3 md:px-6 py-2 md:py-3 relative">
+          <div className="fixed bottom-0 left-0 right-0 md:absolute md:bottom-4 md:left-1/2 md:transform md:-translate-x-1/2 z-20 p-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] md:p-0 md:pb-0 md:max-w-[648px]">
+            <div
+              className={cn(
+                "bg-card/95 backdrop-blur-lg rounded-3xl",
+                "shadow-[0_0_0_1px_rgba(50,50,50,0.16),0_4px_8px_-0.5px_rgba(50,50,50,0.08),0_8px_16px_-2px_rgba(50,50,50,0.04)]",
+                "dark:shadow-none dark:outline dark:outline-1 dark:outline-border",
+              )}
+            >
+              <div className="flex flex-col gap-3 px-3 md:px-3 py-2 md:py-3 relative">
                 {/* Active generations indicator */}
-                {activeGenerations.size > 0 && (
-                  <div className="absolute -top-12 left-1/2 transform -translate-x-1/2 bg-yellow-500/10 border border-yellow-500/20 text-yellow-500 px-3 py-1 rounded text-sm font-medium flex items-center gap-2 ">
-                    <div className="w-2 h-2 bg-yellow-500 rounded-full animate-ping" />
-                    <span>
-                      Generating {activeGenerations.size} image
-                      {activeGenerations.size > 1 ? "s" : ""}
-                    </span>
-                  </div>
-                )}
+                <AnimatePresence mode="wait">
+                  {(activeGenerations.size > 0 ||
+                    activeVideoGenerations.size > 0 ||
+                    isGenerating ||
+                    isRemovingVideoBackground ||
+                    isIsolating ||
+                    isExtendingVideo ||
+                    isTransformingVideo ||
+                    showSuccess) && (
+                    <motion.div
+                      key={showSuccess ? "success" : "generating"}
+                      initial={{ opacity: 0, y: -10, scale: 0.9, x: "-50%" }}
+                      animate={{ opacity: 1, y: 0, scale: 1, x: "-50%" }}
+                      exit={{ opacity: 0, y: -10, scale: 0.9, x: "-50%" }}
+                      transition={{ duration: 0.2, ease: "easeInOut" }}
+                      className={cn(
+                        "absolute z-50 -top-16 left-1/2",
+                        "rounded-xl",
+                        showSuccess
+                          ? "shadow-[0_0_0_1px_rgba(34,197,94,0.2),0_4px_8px_-0.5px_rgba(34,197,94,0.08),0_8px_16px_-2px_rgba(34,197,94,0.04)] dark:shadow-none dark:border dark:border-green-500/30"
+                          : activeVideoGenerations.size > 0 ||
+                              isRemovingVideoBackground ||
+                              isExtendingVideo ||
+                              isTransformingVideo
+                            ? "shadow-[0_0_0_1px_rgba(168,85,247,0.2),0_4px_8px_-0.5px_rgba(168,85,247,0.08),0_8px_16px_-2px_rgba(168,85,247,0.04)] dark:shadow-none dark:border dark:border-purple-500/30"
+                            : "shadow-[0_0_0_1px_rgba(236,6,72,0.2),0_4px_8px_-0.5px_rgba(236,6,72,0.08),0_8px_16px_-2px_rgba(236,6,72,0.04)] dark:shadow-none dark:border dark:border-[#EC0648]/30",
+                      )}
+                    >
+                      <GenerationsIndicator
+                        isAnimating={!showSuccess}
+                        isSuccess={showSuccess}
+                        className="w-5 h-5"
+                        activeGenerationsSize={
+                          activeGenerations.size +
+                          activeVideoGenerations.size +
+                          (isGenerating ? 1 : 0) +
+                          (isRemovingVideoBackground ? 1 : 0) +
+                          (isIsolating ? 1 : 0) +
+                          (isExtendingVideo ? 1 : 0) +
+                          (isTransformingVideo ? 1 : 0)
+                        }
+                        outputType={
+                          activeVideoGenerations.size > 0 ||
+                          isRemovingVideoBackground ||
+                          isExtendingVideo ||
+                          isTransformingVideo
+                            ? "video"
+                            : "image"
+                        }
+                      />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
                 {/* Action buttons row */}
                 <div className="flex items-center gap-1">
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={undo}
-                    disabled={historyIndex <= 0}
-                    className="h-8 w-8 p-0"
-                    title="Undo"
-                  >
-                    <Undo className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={redo}
-                    disabled={historyIndex >= history.length - 1}
-                    className="h-8 w-8 p-0"
-                    title="Redo"
-                  >
-                    <Redo className="h-4 w-4" />
-                  </Button>
-                  <div className="flex-1" />
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={async () => {
-                      if (
-                        confirm("Clear all saved data? This cannot be undone.")
-                      ) {
-                        await canvasStorage.clearAll();
-                        setImages([]);
-                        setViewport({ x: 0, y: 0, scale: 1 });
-                        toast({
-                          title: "Storage cleared",
-                          description: "All saved data has been removed",
-                        });
-                      }
-                    }}
-                    className="h-8 px-2 bg-destructive/10 border border-destructive/20 gap-1 text-destructive hover:bg-destructive/20"
-                    title="Clear storage"
-                  >
-                    <Trash2 className="h-3 w-3" />
-                    <span className="text-xs">Clear</span>
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => setIsApiKeyDialogOpen(true)}
-                    className={cn(
-                      "h-8 px-3 gap-2",
-                      customApiKey &&
-                        "border-green-500/50 bg-green-500/10 hover:border-green-500/70 hover:bg-green-500/20",
-                    )}
-                    title={
-                      customApiKey
-                        ? "Using custom API key"
-                        : "Add your FAL API key"
-                    }
-                  >
-                    <Key
+                  <div className="flex items-center gap-3">
+                    <div
                       className={cn(
-                        "h-4 w-4",
-                        customApiKey && "text-green-500",
-                      )}
-                    />
-                    <span
-                      className={cn(
-                        "text-sm",
-                        customApiKey && "text-green-500",
+                        "rounded-xl overflow-clip flex items-center",
+                        "shadow-[0_0_0_1px_rgba(50,50,50,0.12),0_4px_8px_-0.5px_rgba(50,50,50,0.04),0_8px_16px_-2px_rgba(50,50,50,0.02)]",
+                        "dark:shadow-none dark:border dark:border-border",
                       )}
                     >
-                      {customApiKey ? "Custom Key" : "API Key"}
-                    </span>
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => {
-                      // Create file input with better mobile support
-                      const input = document.createElement("input");
-                      input.type = "file";
-                      input.accept = "image/*";
-                      input.multiple = true;
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={undo}
+                        disabled={historyIndex <= 0}
+                        className="rounded-none"
+                        title="Undo"
+                      >
+                        <Undo className="h-4 w-4" />
+                      </Button>
+                      <div className="h-6 w-px bg-border" />
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={redo}
+                        disabled={historyIndex >= history.length - 1}
+                        className="rounded-none"
+                        title="Redo"
+                      >
+                        <Redo className="h-4 w-4" strokeWidth={2} />
+                      </Button>
+                    </div>
 
-                      // Add to DOM for mobile compatibility
-                      input.style.position = "fixed";
-                      input.style.top = "-1000px";
-                      input.style.left = "-1000px";
-                      input.style.opacity = "0";
-                      input.style.pointerEvents = "none";
-                      input.style.width = "1px";
-                      input.style.height = "1px";
+                    {/* Mode indicator badge */}
+                    <div
+                      className={cn(
+                        "h-9 rounded-xl overflow-clip flex items-center px-3",
+                        "pointer-events-none select-none",
+                        selectedIds.length > 0
+                          ? "bg-blue-500/10 dark:bg-blue-500/15 shadow-[0_0_0_1px_rgba(59,130,246,0.2),0_4px_8px_-0.5px_rgba(59,130,246,0.08),0_8px_16px_-2px_rgba(59,130,246,0.04)] dark:shadow-none dark:border dark:border-blue-500/30"
+                          : "bg-orange-500/10 dark:bg-orange-500/15 shadow-[0_0_0_1px_rgba(249,115,22,0.2),0_4px_8px_-0.5px_rgba(249,115,22,0.08),0_8px_16px_-2px_rgba(249,115,22,0.04)] dark:shadow-none dark:border dark:border-orange-500/30",
+                      )}
+                    >
+                      {selectedIds.length > 0 ? (
+                        <div className="flex items-center gap-2 text-xs font-medium">
+                          <ImageIcon className="w-4 h-4 text-blue-600 dark:text-blue-500" />
+                          <span className="text-blue-600 dark:text-blue-500">
+                            Image to Image
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2 text-xs font-medium">
+                          <span className="text-orange-600 dark:text-orange-500 font-bold text-sm">
+                            T
+                          </span>
+                          <span className="text-orange-600 dark:text-orange-500">
+                            Text to Image
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex-1" />
+                  <div className="flex items-center gap-2">
+                    {/* Clear button */}
+                    <TooltipProvider>
+                      <Tooltip delayDuration={0}>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="secondary"
+                            size="icon-sm"
+                            onClick={async () => {
+                              if (
+                                confirm(
+                                  "Clear all saved data? This cannot be undone.",
+                                )
+                              ) {
+                                await canvasStorage.clearAll();
+                                setImages([]);
+                                setViewport({ x: 0, y: 0, scale: 1 });
+                                toast({
+                                  title: "Storage cleared",
+                                  description:
+                                    "All saved data has been removed",
+                                });
+                              }
+                            }}
+                            className="bg-destructive/10 text-destructive hover:bg-destructive/20"
+                            title="Clear storage"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent className="text-destructive">
+                          <span>Clear</span>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
 
-                      // Add event handlers
-                      input.onchange = (e) => {
-                        try {
-                          handleFileUpload(
-                            (e.target as HTMLInputElement).files,
-                          );
-                        } catch (error) {
-                          console.error("File upload error:", error);
-                          toast({
-                            title: "Upload failed",
-                            description: "Failed to process selected files",
-                            variant: "destructive",
-                          });
-                        } finally {
-                          // Clean up
-                          if (input.parentNode) {
-                            document.body.removeChild(input);
-                          }
-                        }
-                      };
-
-                      input.onerror = () => {
-                        console.error("File input error");
-                        if (input.parentNode) {
-                          document.body.removeChild(input);
-                        }
-                      };
-
-                      // Add to DOM and trigger
-                      document.body.appendChild(input);
-
-                      // Use setTimeout to ensure the input is properly attached
-                      setTimeout(() => {
-                        try {
-                          input.click();
-                        } catch (error) {
-                          console.error(
-                            "Failed to trigger file dialog:",
-                            error,
-                          );
-                          toast({
-                            title: "Upload unavailable",
-                            description:
-                              "File upload is not available. Try using drag & drop instead.",
-                            variant: "destructive",
-                          });
-                          if (input.parentNode) {
-                            document.body.removeChild(input);
-                          }
-                        }
-                      }, 10);
-
-                      // Cleanup after timeout in case dialog was cancelled
-                      setTimeout(() => {
-                        if (input.parentNode) {
-                          document.body.removeChild(input);
-                        }
-                      }, 30000); // 30 second cleanup
-                    }}
-                    className="h-8 px-3 gap-2"
-                    title="Upload images"
-                  >
-                    <Upload className="h-4 w-4" />
-                    <span className="text-sm">Upload</span>
-                  </Button>
+                    {/* Settings dialog button */}
+                    <TooltipProvider>
+                      <Tooltip delayDuration={0}>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="secondary"
+                            size="icon-sm"
+                            className="relative"
+                            onClick={() => setIsSettingsDialogOpen(true)}
+                          >
+                            <SlidersHorizontal className="h-4 w-4" />
+                            {customApiKey && (
+                              <div className="absolute size-2.5 -top-0.5 -right-0.5 bg-blue-500 rounded-full" />
+                            )}
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <span>Settings</span>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
                 </div>
 
                 <div className="relative">
@@ -3151,7 +3255,7 @@ export default function OverlayPage() {
                       })
                     }
                     placeholder={`Enter a prompt... (${checkOS("Win") || checkOS("Linux") ? "Ctrl" : "⌘"}+Enter to run)`}
-                    className="w-full h-20 resize-none bg-background/50 pr-36"
+                    className="w-full h-20 resize-none border-none p-2 pr-36"
                     style={{ fontSize: "16px" }}
                     onKeyDown={(e) => {
                       if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
@@ -3180,7 +3284,7 @@ export default function OverlayPage() {
                           return (
                             <div
                               key={id}
-                              className="absolute rounded border bg-background overflow-hidden"
+                              className="absolute rounded-lg border border-border/20 bg-background overflow-hidden"
                               style={{
                                 right: `${offset}px`,
                                 top: `${topOffset}px`,
@@ -3208,148 +3312,254 @@ export default function OverlayPage() {
                       </div>
                     </div>
                   )}
-
-                  {/* Mode indicator badge */}
-                  <div className="absolute bottom-2 right-2 text-[10px] font-medium pointer-events-none">
-                    {selectedIds.length > 0 ? (
-                      <div className="flex items-center gap-1.5 bg-blue-500/10 text-blue-600 px-2 py-1 rounded-sm border border-blue-500/20">
-                        <ImageIcon className="w-3 h-3" />
-                        <span>Image to Image</span>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-1.5 bg-orange-500/10 text-orange-600 px-2 py-1 rounded-sm border border-orange-500/20">
-                        <span className="font-bold">T</span>
-                        <span>Text to Image</span>
-                      </div>
-                    )}
-                  </div>
                 </div>
 
                 {generationSettings.styleId === "custom" && (
-                  <Input
-                    value={generationSettings.loraUrl}
-                    onChange={(e) =>
-                      setGenerationSettings({
-                        ...generationSettings,
-                        loraUrl: e.target.value,
-                      })
-                    }
-                    placeholder="Kontext LoRA URL (optional)"
-                    className="w-full bg-background/50"
-                    style={{ fontSize: "16px" }}
-                  />
+                  <div className="w-full flex items-center gap-2">
+                    <Input
+                      value={generationSettings.loraUrl}
+                      onChange={(e) =>
+                        setGenerationSettings({
+                          ...generationSettings,
+                          loraUrl: e.target.value,
+                        })
+                      }
+                      placeholder="Kontext LoRA URL (optional)"
+                      style={{ fontSize: "16px" }}
+                    />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="flex items-center gap-2"
+                      onClick={() => {
+                        window.open(
+                          "https://huggingface.co/collections/kontext-community/flux-kontext-loras-687e8779f8ed40a611a3925f",
+                          "_blank",
+                        );
+                      }}
+                      title="Browse Kontext LoRAs"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                    </Button>
+                    {generationSettings.styleId === "custom" && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="flex items-center gap-2"
+                        onClick={() => {
+                          // Find the previous style to restore its settings
+                          const prevStyle = styleModels.find(
+                            (model) => model.id === previousStyleId,
+                          );
+
+                          if (prevStyle) {
+                            setGenerationSettings({
+                              ...generationSettings,
+                              styleId: prevStyle.id,
+                              prompt: prevStyle.prompt,
+                              loraUrl: prevStyle.loraUrl || "",
+                            });
+                          }
+                        }}
+                        title="Go back to previous style"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
                 )}
 
                 {/* Style dropdown and Run button */}
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    {/* Left side - Style selector button */}
-                    <Button
-                      variant="secondary"
-                      className="flex items-center gap-2"
-                      onClick={() => setIsStyleDialogOpen(true)}
-                    >
-                      {(() => {
-                        if (generationSettings.styleId === "custom") {
-                          return (
-                            <>
-                              <div className="w-5 h-5 rounded flex items-center justify-center">
-                                <Plus className="h-3 w-3" />
-                              </div>
-                              <span className="text-sm">Custom</span>
-                            </>
-                          );
-                        }
-                        const selectedModel =
-                          styleModels.find(
-                            (m) => m.id === generationSettings.styleId,
-                          ) || styleModels.find((m) => m.id === "simpsons");
+                  {/* Style selector button */}
+                  <Button
+                    variant="secondary"
+                    className="flex items-center gap-2"
+                    onClick={() => setIsStyleDialogOpen(true)}
+                  >
+                    {(() => {
+                      if (generationSettings.styleId === "custom") {
                         return (
                           <>
-                            <img
-                              src={selectedModel?.imageSrc}
-                              alt={selectedModel?.name}
-                              className="w-5 h-5 rounded object-cover"
-                            />
-                            <span className="text-sm">
-                              {selectedModel?.name || "Simpsons Style"}
-                            </span>
+                            <div className="w-5 h-5 flex items-center justify-center">
+                              <Plus className="w-4 h-4" />
+                            </div>
+                            <span className="text-sm">Custom</span>
                           </>
                         );
-                      })()}
-                      <ChevronDown className="h-4 w-4" />
-                    </Button>
-
-                    {/* Right side - Run button */}
-                    <Button
-                      onClick={handleRun}
-                      variant="primary"
-                      disabled={
-                        isGenerating || !generationSettings.prompt.trim()
                       }
-                      className="gap-2 font-medium transition-all"
-                    >
-                      {isGenerating ? (
+                      const selectedModel =
+                        styleModels.find(
+                          (m) => m.id === generationSettings.styleId,
+                        ) || styleModels.find((m) => m.id === "simpsons");
+                      return (
                         <>
-                          <SpinnerIcon className="h-4 w-4 animate-spin" />
-                          <span>Processing...</span>
-                        </>
-                      ) : (
-                        <div className="flex items-center gap-2">
-                          <span>Run</span>
-                          <ShortcutBadge
-                            variant="alpha"
-                            size="xs"
-                            shortcut={
-                              checkOS("Win") || checkOS("Linux")
-                                ? "ctrl+enter"
-                                : "meta+enter"
-                            }
+                          <img
+                            src={selectedModel?.imageSrc}
+                            alt={selectedModel?.name}
+                            className="w-5 h-5 rounded-xl object-cover"
                           />
-                        </div>
-                      )}
-                    </Button>
-                  </div>
+                          <span className="text-sm">
+                            {selectedModel?.name || "Simpsons Style"}
+                          </span>
+                        </>
+                      );
+                    })()}
+                    <ChevronDown className="h-4 w-4" />
+                  </Button>
+                  <div className="flex items-center gap-2">
+                    {/* Attachment button */}
+                    <TooltipProvider>
+                      <Tooltip delayDuration={0}>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="border-none"
+                            onClick={() => {
+                              // Create file input with better mobile support
+                              const input = document.createElement("input");
+                              input.type = "file";
+                              input.accept = "image/*";
+                              input.multiple = true;
 
-                  {/* GitHub button */}
-                  <Link
-                    className={cn(
-                      buttonVariants({
-                        variant: "secondary",
-                        className: "gap-2",
-                        size: "sm",
-                      }),
-                      "hidden xl:flex",
-                    )}
-                    href={"https://github.com/fal-ai-community/infinite-kanvas"}
-                    target="_blank"
-                    title="Star on GitHub"
-                  >
-                    <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
-                    Star on GitHub
-                    <svg
-                      className="h-4 w-4"
-                      fill="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
-                    </svg>
-                  </Link>
+                              // Add to DOM for mobile compatibility
+                              input.style.position = "fixed";
+                              input.style.top = "-1000px";
+                              input.style.left = "-1000px";
+                              input.style.opacity = "0";
+                              input.style.pointerEvents = "none";
+                              input.style.width = "1px";
+                              input.style.height = "1px";
+
+                              // Add event handlers
+                              input.onchange = (e) => {
+                                try {
+                                  handleFileUpload(
+                                    (e.target as HTMLInputElement).files,
+                                  );
+                                } catch (error) {
+                                  console.error("File upload error:", error);
+                                  toast({
+                                    title: "Upload failed",
+                                    description:
+                                      "Failed to process selected files",
+                                    variant: "destructive",
+                                  });
+                                } finally {
+                                  // Clean up
+                                  if (input.parentNode) {
+                                    document.body.removeChild(input);
+                                  }
+                                }
+                              };
+
+                              input.onerror = () => {
+                                console.error("File input error");
+                                if (input.parentNode) {
+                                  document.body.removeChild(input);
+                                }
+                              };
+
+                              // Add to DOM and trigger
+                              document.body.appendChild(input);
+
+                              // Use setTimeout to ensure the input is properly attached
+                              setTimeout(() => {
+                                try {
+                                  input.click();
+                                } catch (error) {
+                                  console.error(
+                                    "Failed to trigger file dialog:",
+                                    error,
+                                  );
+                                  toast({
+                                    title: "Upload unavailable",
+                                    description:
+                                      "File upload is not available. Try using drag & drop instead.",
+                                    variant: "destructive",
+                                  });
+                                  if (input.parentNode) {
+                                    document.body.removeChild(input);
+                                  }
+                                }
+                              }, 10);
+
+                              // Cleanup after timeout in case dialog was cancelled
+                              setTimeout(() => {
+                                if (input.parentNode) {
+                                  document.body.removeChild(input);
+                                }
+                              }, 30000); // 30 second cleanup
+                            }}
+                            title="Upload images"
+                          >
+                            <Paperclip className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <span>Upload</span>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+
+                    {/* Run button */}
+                    <TooltipProvider>
+                      <Tooltip delayDuration={0}>
+                        <TooltipTrigger asChild>
+                          <Button
+                            onClick={handleRun}
+                            variant="primary"
+                            size="icon"
+                            disabled={
+                              isGenerating || !generationSettings.prompt.trim()
+                            }
+                            className={cn(
+                              "gap-2 font-medium transition-all",
+                              isGenerating && "bg-secondary",
+                            )}
+                          >
+                            {isGenerating ? (
+                              <SpinnerIcon className="h-4 w-4 animate-spin text-white" />
+                            ) : (
+                              <PlayIcon className="h-4 w-4 text-white fill-white" />
+                            )}
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <div className="flex items-center gap-2">
+                            <span>Run</span>
+                            <ShortcutBadge
+                              variant="default"
+                              size="xs"
+                              shortcut={
+                                checkOS("Win") || checkOS("Linux")
+                                  ? "ctrl+enter"
+                                  : "meta+enter"
+                              }
+                            />
+                          </div>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
 
           {/* Mini-map */}
-          <MiniMap
-            images={images}
-            videos={videos}
-            viewport={viewport}
-            canvasSize={canvasSize}
-          />
+          {showMinimap && (
+            <MiniMap
+              images={images}
+              videos={videos}
+              viewport={viewport}
+              canvasSize={canvasSize}
+            />
+          )}
 
           {/* {isSaving && (
-            <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-30 bg-background/95 border rounded-md px-3 py-2 flex items-center gap-2 shadow-sm">
+            <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-30 bg-background/95 border rounded-xl px-3 py-2 flex items-center gap-2 shadow-sm">
               <SpinnerIcon className="h-4 w-4 animate-spin text-muted-foreground" />
               <span className="text-sm text-muted-foreground">Saving...</span>
             </div>
@@ -3361,6 +3571,9 @@ export default function OverlayPage() {
             setViewport={setViewport}
             canvasSize={canvasSize}
           />
+
+          <PoweredByFalBadge />
+          <GithubBadge />
 
           {/* Dimension display for selected images */}
           <DimensionDisplay
@@ -3403,13 +3616,13 @@ export default function OverlayPage() {
                     setIsStyleDialogOpen(false);
                   }}
                   className={cn(
-                    "group relative flex flex-col items-center gap-2 p-3 rounded border",
+                    "group relative flex flex-col items-center gap-2 p-3 rounded-xl border",
                     generationSettings.styleId === "custom"
                       ? "border-primary bg-primary/10"
                       : "border-border hover:border-primary/50",
                   )}
                 >
-                  <div className="w-full aspect-square rounded-md bg-muted flex items-center justify-center">
+                  <div className="w-full aspect-square rounded-lg bg-muted flex items-center justify-center">
                     <Plus className="h-8 w-8 text-muted-foreground" />
                   </div>
                   <span className="text-sm font-medium">Custom</span>
@@ -3429,13 +3642,13 @@ export default function OverlayPage() {
                       setIsStyleDialogOpen(false);
                     }}
                     className={cn(
-                      "group relative flex flex-col items-center gap-2 p-3 rounded border",
+                      "group relative flex flex-col items-center gap-2 p-3 rounded-xl border",
                       generationSettings.styleId === model.id
                         ? "border-primary bg-primary/10"
                         : "border-border hover:border-primary/50",
                     )}
                   >
-                    <div className="relative w-full aspect-square rounded-md overflow-hidden">
+                    <div className="relative w-full aspect-square rounded-lg overflow-hidden">
                       <Image
                         src={model.imageSrc}
                         alt={model.name}
@@ -3458,101 +3671,187 @@ export default function OverlayPage() {
         </DialogContent>
       </Dialog>
 
-      {/* API Key Dialog */}
-      <Dialog open={isApiKeyDialogOpen} onOpenChange={setIsApiKeyDialogOpen}>
-        <DialogContent className="max-w-md">
+      {/* Settings dialog */}
+      <Dialog
+        open={isSettingsDialogOpen}
+        onOpenChange={setIsSettingsDialogOpen}
+      >
+        <DialogContent className="w-[95vw] max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>FAL API Key</DialogTitle>
-            <DialogDescription>
-              Add your own FAL API key to bypass rate limits and use your own
-              quota.
-            </DialogDescription>
+            <DialogTitle>Settings</DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="api-key">API Key</Label>
-              <Input
-                id="api-key"
-                type="password"
-                placeholder="Enter your API key"
-                value={tempApiKey}
-                onChange={(e) => setTempApiKey(e.target.value)}
-                className="font-mono"
-                style={{ fontSize: "16px" }}
-              />
-              <p className="text-xs text-muted-foreground">
-                Get your API key from{" "}
-                <Link
-                  href="https://fal.ai/dashboard/keys"
-                  target="_blank"
-                  className="underline hover:text-foreground"
-                >
-                  fal.ai/dashboard/keys
-                </Link>
-              </p>
-            </div>
-
-            {customApiKey && (
-              <div className="rounded-md bg-green-500/10 border border-green-500/20 p-3">
-                <div className="flex items-center gap-2 text-sm text-green-600">
-                  <Check className="h-4 w-4" />
-                  <span>Currently using custom API key</span>
-                </div>
+          <div className="space-y-6">
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="api-key">FAL API Key</Label>
+                <p className="text-sm text-muted-foreground">
+                  Add your own FAL API key to bypass rate limits and use your
+                  own quota.
+                </p>
+                <Input
+                  id="api-key"
+                  type="password"
+                  placeholder="Enter your API key"
+                  value={tempApiKey}
+                  onChange={(e) => setTempApiKey(e.target.value)}
+                  className="font-mono"
+                  style={{ fontSize: "16px" }}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Get your API key from{" "}
+                  <Link
+                    href="https://fal.ai/dashboard/keys"
+                    target="_blank"
+                    className="underline hover:text-foreground"
+                  >
+                    fal.ai/dashboard/keys
+                  </Link>
+                </p>
               </div>
-            )}
 
-            <div className="flex justify-between gap-2">
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  setCustomApiKey("");
-                  setTempApiKey("");
-                  setIsApiKeyDialogOpen(false);
-                  toast({
-                    title: "API key removed",
-                    description: "Using default rate-limited API",
-                  });
-                }}
-                disabled={!customApiKey}
-              >
-                Remove Key
-              </Button>
+              {customApiKey && (
+                <div className="rounded-xl bg-green-500/10 border border-green-500/20 p-3">
+                  <div className="flex items-center gap-2 text-sm text-green-600">
+                    <Check className="h-4 w-4" />
+                    <span>Currently using custom API key</span>
+                  </div>
+                </div>
+              )}
 
-              <div className="flex gap-2">
+              <div className="flex justify-between gap-2">
                 <Button
                   variant="secondary"
                   onClick={() => {
-                    setTempApiKey(customApiKey);
+                    setCustomApiKey("");
+                    setTempApiKey("");
                     setIsApiKeyDialogOpen(false);
+                    toast({
+                      title: "API key removed",
+                      description: "Using default rate-limited API",
+                    });
                   }}
+                  disabled={!customApiKey}
                 >
-                  Cancel
+                  Remove Key
                 </Button>
-                <Button
-                  variant="primary"
-                  onClick={() => {
-                    const trimmedKey = tempApiKey.trim();
-                    if (trimmedKey) {
-                      setCustomApiKey(trimmedKey);
+
+                <div className="flex gap-2">
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      setTempApiKey(customApiKey);
                       setIsApiKeyDialogOpen(false);
-                      toast({
-                        title: "API key saved",
-                        description: "Your custom API key is now active",
-                      });
-                    } else if (trimmedKey) {
-                      toast({
-                        title: "Invalid API key",
-                        description: "FAL API keys should start with 'fal_'",
-                        variant: "destructive",
-                      });
-                    }
-                  }}
-                  disabled={!tempApiKey.trim()}
-                >
-                  Save Key
-                </Button>
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="primary"
+                    onClick={() => {
+                      const trimmedKey = tempApiKey.trim();
+                      if (trimmedKey) {
+                        setCustomApiKey(trimmedKey);
+                        setIsApiKeyDialogOpen(false);
+                        toast({
+                          title: "API key saved",
+                          description: "Your custom API key is now active",
+                        });
+                      } else if (trimmedKey) {
+                        toast({
+                          title: "Invalid API key",
+                          description: "FAL API keys should start with 'fal_'",
+                          variant: "destructive",
+                        });
+                      }
+                    }}
+                    disabled={!tempApiKey.trim()}
+                  >
+                    Save Key
+                  </Button>
+                </div>
               </div>
+            </div>
+
+            <div className="h-px bg-border/40" />
+
+            {/* Appearance */}
+            <div className="flex justify-between">
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="appearance">Appearance</Label>
+                <p className="text-sm text-muted-foreground">
+                  Customize how infinite-kanvas looks on your device.
+                </p>
+              </div>
+              <Select
+                value={theme || "system"}
+                onValueChange={(value: "system" | "light" | "dark") =>
+                  setTheme(value)
+                }
+              >
+                <SelectTrigger className="max-w-[140px] rounded-xl">
+                  <div className="flex items-center gap-2">
+                    {theme === "light" ? (
+                      <SunIcon className="size-4" />
+                    ) : theme === "dark" ? (
+                      <MoonIcon className="size-4" />
+                    ) : (
+                      <MonitorIcon className="size-4" />
+                    )}
+                    <span className="capitalize">{theme || "system"}</span>
+                  </div>
+                </SelectTrigger>
+                <SelectContent className="rounded-xl">
+                  <SelectItem value="system" className="rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <MonitorIcon className="size-4" />
+                      <span>System</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="light" className="rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <SunIcon className="size-4" />
+                      <span>Light</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="dark" className="rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <MoonIcon className="size-4" />
+                      <span>Dark</span>
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Grid */}
+            <div className="flex justify-between">
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="grid">Show Grid</Label>
+                <p className="text-sm text-muted-foreground">
+                  Show a grid on the canvas to help you align your images.
+                </p>
+              </div>
+              <Switch
+                id="grid"
+                checked={showGrid}
+                onCheckedChange={setShowGrid}
+              />
+            </div>
+
+            {/* Minimap */}
+            <div className="flex justify-between">
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="minimap">Show Minimap</Label>
+                <p className="text-sm text-muted-foreground">
+                  Show a minimap in the corner to navigate the canvas.
+                </p>
+              </div>
+              <Switch
+                id="minimap"
+                checked={showMinimap}
+                onCheckedChange={setShowMinimap}
+              />
             </div>
           </div>
         </DialogContent>
